@@ -2,6 +2,7 @@ import express from 'express'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { pool, migrate, nextNumber } from './db.js'
+import { renderDocument } from './documentTemplate.js'
 import { getRate } from './rapira.js'
 import { vcc } from './vcc.js'
 import { miniapp } from './miniapp.js'
@@ -378,6 +379,53 @@ app.delete('/api/sheets/:id', requireAuth, requireSection('payout-sheet', 'write
     res.json({ success: true, id: req.params.id })
   } catch (e: any) {
     res.status(500).json({ success: false, error: e.message })
+  }
+})
+
+// Документ расчётного листа — HTML-страница в стиле печатной формы 1С.
+// Открывается по прямой ссылке; «Печать/Сохранить PDF» в браузере даёт PDF
+// с тем же видом, что и печать из интерфейса.
+const rubDoc = (kopecks: number | string) =>
+  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+    Number(kopecks) / 100,
+  ) + ' ₽'
+const dtDoc = (iso: string) => {
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`
+}
+
+app.get('/api/sheets/:id/document', requireAuth, requireSection('payout-sheet'), async (req, res) => {
+  try {
+    const { rows } = await pool.query('select * from payout_sheets where id = $1', [req.params.id])
+    if (!rows.length) return res.status(404).send('Лист не найден')
+
+    const s = rows[0]
+    const html = renderDocument({
+      docType: 'Расчётный лист',
+      number: String(s.number).replace(/^РЛ-/, ''),
+      date: dtDoc(s.created_at),
+      fields: [
+        { label: 'Партнёр', value: s.partner_name + (s.partner_code ? ` (${s.partner_code})` : ''), wide: true },
+        { label: 'Период', value: `${dtDoc(s.date_from)} — ${dtDoc(s.date_to)}`, wide: true },
+        { label: 'Оборот за период', value: rubDoc(s.turnover_rub) },
+        { label: 'Процент заработка', value: `${Number(s.percent)} %` },
+        { label: 'Курс USDT/RUB (RAPIRA)', value: `${Number(s.rate_usdt_rub).toFixed(2)} ₽` },
+        ...(s.comment ? [{ label: 'Комментарий', value: s.comment, wide: true }] : []),
+      ],
+      total: {
+        label: 'К выплате:',
+        value: rubDoc(s.payout_rub),
+        sub: `${Number(s.payout_usdt).toFixed(2)} USDT`,
+      },
+      footNote: `Расчёт: оборот ${rubDoc(s.turnover_rub)} × ${Number(s.percent)}% ÷ курс ${Number(
+        s.rate_usdt_rub,
+      ).toFixed(2)} ₽. Документ ${s.number} сформирован в админ-панели Love&Pay.`,
+    })
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(html)
+  } catch (e: any) {
+    res.status(500).send('Ошибка формирования документа')
   }
 })
 

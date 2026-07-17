@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { List, useTable } from '@refinedev/antd'
 import { useMutation } from '@tanstack/react-query'
 import { Table, Select, Space, Card, Typography, Button, App, Input, Alert } from 'antd'
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, FileExcelOutlined } from '@ant-design/icons'
 import type { CrudFilters } from '@refinedev/core'
 import { dt, money } from '../../lib/format'
+import { exportToExcel, rub } from '../../lib/export'
 import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
@@ -99,8 +100,30 @@ export const RefundList = () => {
     },
   ])
 
+  const exportRows = () =>
+    exportToExcel(
+      (tableQuery.data?.data ?? []) as any[],
+      [
+        { title: 'Создан', value: (r) => (r.createdAt ? dt(r.createdAt) : '') },
+        { title: 'Статус', value: (r) => r.status },
+        { title: 'Сумма, ₽', value: (r) => rub(r.amount) },
+        { title: 'Инвойс', value: (r) => r.invoice?.invoiceNumber ?? r.invoiceId ?? '' },
+        { title: 'Партнёр', value: (r) => r.partner?.name ?? '' },
+        { title: 'Причина', value: (r) => r.reason ?? '' },
+        { title: 'Ошибка', value: (r) => r.executionError ?? '' },
+      ],
+      'Возвраты',
+    )
+
   return (
-    <List title="Возвраты">
+    <List
+      title="Возвраты"
+      headerButtons={
+        <Button size="small" icon={<FileExcelOutlined />} onClick={exportRows}>
+          В Excel
+        </Button>
+      }
+    >
       <Card size="small" style={{ marginBottom: 12 }}>
         <Space wrap align="end" size={12}>
           <Field label="Статус">

@@ -16,7 +16,14 @@ import {
   Popconfirm,
   App,
 } from 'antd'
-import { CalculatorOutlined, SaveOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+  CalculatorOutlined,
+  SaveOutlined,
+  DeleteOutlined,
+  FileExcelOutlined,
+  PrinterOutlined,
+  FilePdfOutlined,
+} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
@@ -24,6 +31,8 @@ import { money, usdt, dt } from '../../lib/format'
 import { api, type SavedSheet } from '../../api/backend'
 import { useRowMenu } from '../../components/useRowMenu'
 import { recentPeriods, lastPeriod } from '../../lib/week'
+import { exportToExcel } from '../../lib/export'
+import { PrintDocument } from '../../components/PrintDocument'
 
 const { Text } = Typography
 
@@ -81,8 +90,19 @@ export const PayoutSheet = () => {
   })
 
   const s = calc.data
+  const [printSheet, setPrintSheet] = useState<SavedSheet | null>(null)
+
+  // Документ открываем прямой ссылкой в новой вкладке: он выглядит как
+  // печатная форма, а «Сохранить как PDF» в браузере даёт готовый PDF.
+  const docUrl = (id: string) => `/api/sheets/${id}/document`
 
   const { onRow, menu } = useRowMenu<SavedSheet>((r) => [
+    {
+      key: 'doc',
+      label: 'Открыть документ / PDF',
+      onClick: () => window.open(docUrl(r.id), '_blank', 'noopener'),
+    },
+    { key: 'print', label: 'Печать (в окне)', onClick: () => setPrintSheet(r) },
     {
       key: 'again',
       label: 'Пересчитать этот период',
@@ -260,7 +280,36 @@ export const PayoutSheet = () => {
         )}
       </Card>
 
-      <Card title={`Сохранённые листы · ${sheets.data?.total ?? 0}`} size="small">
+      <Card
+        title={`Сохранённые листы · ${sheets.data?.total ?? 0}`}
+        size="small"
+        extra={
+          <Button
+            size="small"
+            icon={<FileExcelOutlined />}
+            onClick={() =>
+              exportToExcel(
+                sheets.data?.sheets ?? [],
+                [
+                  { title: 'Номер', value: (r) => r.number },
+                  { title: 'Партнёр', value: (r) => r.partner_name },
+                  { title: 'Период с', value: (r) => dayjs(r.date_from).format('DD.MM.YYYY') },
+                  { title: 'Период по', value: (r) => dayjs(r.date_to).format('DD.MM.YYYY') },
+                  { title: 'Оборот, ₽', value: (r) => Number(r.turnover_rub) / 100 },
+                  { title: 'Процент, %', value: (r) => Number(r.percent) },
+                  { title: 'Курс', value: (r) => Number(r.rate_usdt_rub) },
+                  { title: 'Заработок, ₽', value: (r) => Number(r.payout_rub) / 100 },
+                  { title: 'Заработок, USDT', value: (r) => Number(r.payout_usdt) },
+                  { title: 'Создан', value: (r) => dt(r.created_at) },
+                ],
+                'Расчётные_листы',
+              )
+            }
+          >
+            В Excel
+          </Button>
+        }
+      >
         <Table
           dataSource={sheets.data?.sheets ?? []}
           loading={sheets.isFetching}
@@ -326,22 +375,62 @@ export const PayoutSheet = () => {
           />
           <Table.Column
             title=""
-            width={50}
+            width={120}
             render={(_: unknown, r: SavedSheet) => (
-              <Popconfirm
-                title="Удалить лист?"
-                description={`${r.number} — ${r.partner_name}`}
-                okText="Удалить"
-                cancelText="Отмена"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => del.mutate(r.id)}
-              >
-                <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-              </Popconfirm>
+              <Space size={4}>
+                <Button
+                  size="small"
+                  icon={<FilePdfOutlined />}
+                  title="Открыть документ / PDF"
+                  href={docUrl(r.id)}
+                  target="_blank"
+                />
+                <Button
+                  size="small"
+                  icon={<PrinterOutlined />}
+                  title="Печать / документ"
+                  onClick={() => setPrintSheet(r)}
+                />
+                <Popconfirm
+                  title="Удалить лист?"
+                  description={`${r.number} — ${r.partner_name}`}
+                  okText="Удалить"
+                  cancelText="Отмена"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => del.mutate(r.id)}
+                >
+                  <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+              </Space>
             )}
           />
         </Table>
       </Card>
+
+      {printSheet && (
+        <PrintDocument
+          open={!!printSheet}
+          onClose={() => setPrintSheet(null)}
+          docType="Расчётный лист"
+          number={printSheet.number.replace(/^РЛ-/, '')}
+          date={dt(printSheet.created_at)}
+          fields={[
+            { label: 'Партнёр', value: printSheet.partner_name, wide: true },
+            {
+              label: 'Период',
+              value: `${dayjs(printSheet.date_from).format('DD.MM.YYYY')} — ${dayjs(printSheet.date_to).format('DD.MM.YYYY')}`,
+              wide: true,
+            },
+            { label: 'Оборот', value: money(Number(printSheet.turnover_rub)) },
+            { label: 'Процент', value: `${Number(printSheet.percent)}%` },
+            { label: 'Курс USDT/RUB (RAPIRA)', value: Number(printSheet.rate_usdt_rub).toFixed(2) },
+            { label: 'Заработок, ₽', value: money(Number(printSheet.payout_rub)) },
+            { label: 'Заработок, USDT', value: usdt(Number(printSheet.payout_usdt)) },
+            ...(printSheet.comment ? [{ label: 'Комментарий', value: printSheet.comment, wide: true }] : []),
+          ]}
+          footNote={`Расчёт: оборот ${money(Number(printSheet.turnover_rub))} × ${Number(printSheet.percent)}% ÷ курс ${Number(printSheet.rate_usdt_rub).toFixed(2)} ₽. Документ ${printSheet.number} сформирован в админ-панели Love&Pay.`}
+        />
+      )}
     </Space>
   )
 }

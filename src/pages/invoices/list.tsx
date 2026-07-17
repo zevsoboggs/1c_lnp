@@ -11,6 +11,11 @@ import { Toolbar } from '../../components/Toolbar'
 import { SyncInvoiceButton, MarkRefundedButton, BulkSyncButton } from './Actions'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAutoRefresh, AutoRefreshSwitch } from '../../components/AutoRefresh'
+import { InvoiceDetail } from './detail'
+import { exportToExcel, rub } from '../../lib/export'
+import { Button } from 'antd'
+import { EyeOutlined, FileExcelOutlined } from '@ant-design/icons'
+import { useState } from 'react'
 
 const { Text } = Typography
 
@@ -23,6 +28,7 @@ const PERIODS = [
 
 export const InvoiceList = () => {
   const auto = useAutoRefresh(5000)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const { tableProps, filters, setFilters, tableQuery } = useTable({
     resource: 'invoices',
@@ -45,6 +51,8 @@ export const InvoiceList = () => {
     setFilters([{ field, operator: 'eq', value }], 'merge')
 
   const { onRow, menu } = useRowMenu<any>((r) => [
+    { key: 'open', label: 'Открыть детали', onClick: () => setDetailId(r.id) },
+    { type: 'divider' },
     r.invoiceNumber && {
       key: 'num',
       label: 'Копировать номер счёта',
@@ -66,6 +74,25 @@ export const InvoiceList = () => {
       onClick: () => apply('search', r.customerEmail ?? r.customerPhone),
     },
   ])
+
+  const exportRows = () =>
+    exportToExcel(
+      (tableQuery.data?.data ?? []) as any[],
+      [
+        { title: 'Создан', value: (r) => (r.createdAt ? dt(r.createdAt) : '') },
+        { title: 'Номер', value: (r) => r.invoiceNumber ?? '' },
+        { title: 'Статус', value: (r) => r.status },
+        { title: 'Сумма, ₽', value: (r) => rub(r.amount) },
+        { title: 'Валюта', value: (r) => r.currency ?? '' },
+        { title: 'Партнёр', value: (r) => r.partner?.name ?? r.partnerId ?? '' },
+        { title: 'Клиент', value: (r) => r.customerName ?? '' },
+        { title: 'Email', value: (r) => r.customerEmail ?? '' },
+        { title: 'Телефон', value: (r) => r.customerPhone ?? '' },
+        { title: 'Оплачен', value: (r) => (r.paidAt ? dt(r.paidAt) : '') },
+        { title: 'Описание', value: (r) => r.description ?? '' },
+      ],
+      'Инвойсы',
+    )
 
   return (
     <List title="Инвойсы">
@@ -120,6 +147,9 @@ export const InvoiceList = () => {
           updatedAt={tableQuery.dataUpdatedAt}
           intervalMs={auto.intervalMs}
         />
+        <Button size="small" icon={<FileExcelOutlined />} onClick={exportRows}>
+          В Excel
+        </Button>
       </Toolbar>
 
       {menu}
@@ -170,16 +200,24 @@ export const InvoiceList = () => {
         <Table.Column dataIndex="description" title="Описание" ellipsis />
         <Table.Column
           title="Действия"
-          width={90}
+          width={130}
           fixed="right"
           render={(_: unknown, r: any) => (
             <Space size={4}>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                title="Детали"
+                onClick={() => setDetailId(r.id)}
+              />
               <SyncInvoiceButton invoice={r} onDone={() => tableQuery.refetch()} />
               <MarkRefundedButton invoice={r} onDone={() => tableQuery.refetch()} />
             </Space>
           )}
         />
       </Table>
+
+      <InvoiceDetail id={detailId} onClose={() => setDetailId(null)} />
     </List>
   )
 }

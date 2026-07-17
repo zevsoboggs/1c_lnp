@@ -10,6 +10,11 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAutoRefresh, AutoRefreshSwitch } from '../../components/AutoRefresh'
+import { TransactionDetail } from './detail'
+import { exportToExcel, rub } from '../../lib/export'
+import { Button } from 'antd'
+import { EyeOutlined, FileExcelOutlined } from '@ant-design/icons'
+import { useState } from 'react'
 
 const { Text } = Typography
 
@@ -22,6 +27,7 @@ const PERIODS = [
 
 export const TransactionList = () => {
   const auto = useAutoRefresh(5000)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const { tableProps, filters, setFilters, tableQuery } = useTable({
     resource: 'transactions',
@@ -47,6 +53,8 @@ export const TransactionList = () => {
     setFilters([{ field, operator: 'eq', value }], 'merge')
 
   const { onRow, menu } = useRowMenu<any>((r) => [
+    { key: 'open', label: 'Открыть детали', onClick: () => setDetailId(r.id) },
+    { type: 'divider' },
     r.partnerId && {
       key: 'partner',
       label: `Показать всё по «${r.partner?.name ?? 'партнёру'}»`,
@@ -63,6 +71,23 @@ export const TransactionList = () => {
       onClick: () => navigator.clipboard.writeText(r.externalOrderId),
     },
   ])
+
+  const exportRows = () =>
+    exportToExcel(
+      (tableQuery.data?.data ?? []) as any[],
+      [
+        { title: 'Дата', value: (r) => (r.createdAt ? dt(r.createdAt) : '') },
+        { title: 'Статус', value: (r) => r.status },
+        { title: 'Сумма, ₽', value: (r) => rub(r.amount) },
+        { title: 'Валюта', value: (r) => r.orderCurrency ?? '' },
+        { title: 'Партнёр', value: (r) => r.partner?.name ?? r.partnerId ?? '' },
+        { title: 'Инвойс', value: (r) => r.invoice?.invoiceNumber ?? '' },
+        { title: 'Провайдер', value: (r) => r.provider ?? '' },
+        { title: 'Внешний ID', value: (r) => r.externalOrderId ?? '' },
+        { title: 'Ошибка', value: (r) => r.errorMessage ?? '' },
+      ],
+      'Транзакции',
+    )
 
   return (
     <List title="Транзакции">
@@ -107,6 +132,9 @@ export const TransactionList = () => {
           updatedAt={tableQuery.dataUpdatedAt}
           intervalMs={auto.intervalMs}
         />
+        <Button size="small" icon={<FileExcelOutlined />} onClick={exportRows}>
+          В Excel
+        </Button>
       </Toolbar>
 
       {menu}
@@ -164,7 +192,22 @@ export const TransactionList = () => {
           title="Ошибка"
           render={(v: string) => (v ? <Text type="danger">{v}</Text> : '—')}
         />
+        <Table.Column
+          title=""
+          width={50}
+          fixed="right"
+          render={(_: unknown, r: any) => (
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              title="Детали"
+              onClick={() => setDetailId(r.id)}
+            />
+          )}
+        />
       </Table>
+
+      <TransactionDetail id={detailId} onClose={() => setDetailId(null)} />
     </List>
   )
 }
