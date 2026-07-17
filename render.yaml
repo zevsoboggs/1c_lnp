@@ -1,0 +1,45 @@
+# Render Blueprint — один веб-сервис, отдающий и API, и собранный фронт.
+# Секреты (sync: false) в этот файл НЕ пишутся — их вводят в дашборде Render,
+# поэтому render.yaml безопасно коммитить.
+services:
+  - type: web
+    name: loveandpay-admin
+    runtime: node
+    plan: starter # бесплатный тир засыпает; для боевой — оставить starter/standard
+    region: frankfurt # ближе к серверу БД (Европа) — меньше задержка до Postgres
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Единый процесс отдаёт статику dist/ вместе с API.
+      - key: SERVE_CLIENT
+        value: "1"
+      # PORT Render подставляет сам; сервер читает process.env.PORT.
+
+      # ── Секреты: вводятся в дашборде Render, в git не попадают ──────────────
+      - key: DATABASE_URL
+        sync: false # postgres://admin:...@51.68.225.233:5432/1c
+      - key: ADMIN_API_KEY
+        sync: false # ключ admin-api loveandpay
+      - key: ADMIN_API_URL
+        value: https://loveandpay.io
+      - key: PAYSPACE_API_KEY
+        sync: false
+      - key: PAYSPACE_SECRET
+        sync: false
+      - key: PAYSPACE_API_URL
+        value: https://app.pay.space
+      - key: MINIAPP_ADMIN_KEY
+        sync: false
+      - key: MINIAPP_API_URL
+        value: https://lnpapp.rest
+      - key: RAPIRA_API
+        value: https://api.rapira.net/market/symbol-thumb
+      - key: KYC_BILLING_CONFIRM_CODE
+        sync: false # СМЕНИТЬ на свой, не дефолтный из исходников
+      # Первый пароль администратора при первом старте (иначе печатается в лог).
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
+      # ADMIN_INSECURE_COOKIE НЕ задаём: в проде cookie обязана быть Secure.

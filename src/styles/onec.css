@@ -1,0 +1,86 @@
+/* Детали интерфейса «Такси», которые не выражаются токенами AntD. */
+
+body {
+  font-size: 13px;
+}
+
+/* Сайдбар: жёлтая панель с тонкой границей, без скруглений. */
+.ant-layout-sider {
+  border-right: 1px solid #e0d9b0;
+}
+
+/* В 1С иконка пункта серая, а подпись — синяя ссылка. */
+.ant-layout-sider .ant-menu-item .anticon {
+  color: #6b6b6b;
+}
+.ant-layout-sider .ant-menu-item-selected .anticon {
+  color: #0d5aa7;
+}
+.ant-layout-sider .ant-menu-item {
+  border-bottom: 1px solid #f6efc8;
+}
+.ant-layout-sider .ant-menu-item a {
+  color: #0d5aa7;
+}
+/* Современная деталь поверх 1С: активный раздел отмечен полосой слева. */
+.ant-layout-sider .ant-menu-item-selected {
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #0d5aa7;
+}
+.ant-layout-sider .ant-menu-item-selected a {
+  color: #10365f;
+}
+
+/* Заголовок раздела — крупный, тёмный, со звёздой избранного как в оригинале. */
+.ant-page-header-heading-title,
+.ant-card-head-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+/* Плотная сетка: тонкие линии по всем ячейкам, как в табличной части 1С. */
+.ant-table-small .ant-table-tbody > tr > td {
+  border-right: 1px solid #ededed;
+  line-height: 1.35;
+  /* В 1С строка всегда одной высоты: длинное значение обрезается,
+     а не переносится и не растягивает таблицу. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+.ant-table-small .ant-table-thead > tr > th {
+  border-right: 1px solid #dcdcdc;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.ant-table-tbody > tr > td {
+  transition: none;
+}
+
+/* Строка, требующая внимания: платёж от третьего лица и подобное. */
+.onec-row-danger > td {
+  background: #fff1f0;
+}
+.ant-table-tbody > tr.onec-row-danger:hover > td {
+  background: #ffe4e1 !important;
+}
+
+/* Панель фильтров — подпись сверху, поле снизу. */
+.onec-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.onec-filter > label {
+  font-size: 12px;
+  color: #444;
+}
+
+/* Полоса заголовка списка. */
+.onec-toolbar {
+  border: 1px solid #e0e0e0;
+  border-bottom: none;
+  background: #fafafa;
+  padding: 8px 10px;
+}
