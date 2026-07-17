@@ -50,13 +50,13 @@ export function UserMenu() {
           style={{
             padding: '8px 12px',
             cursor: 'pointer',
-            borderTop: '1px solid #efe5b8',
+            borderTop: '1px solid #E8DCAE',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
           }}
         >
-          <Avatar size={24} icon={<UserOutlined />} style={{ background: '#E8B900', flexShrink: 0 }} />
+          <Avatar size={24} icon={<UserOutlined />} style={{ background: '#1668dc', flexShrink: 0 }} />
           <div style={{ minWidth: 0, lineHeight: 1.2 }}>
             <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis>
               {me?.name ?? '—'}

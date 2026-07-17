@@ -1,86 +1,138 @@
-/* Детали интерфейса «Такси», которые не выражаются токенами AntD. */
+/* Детали нового интерфейса 1С 8.5, не выражаемые токенами AntD. */
 
 body {
   font-size: 13px;
+  background: #f3f4f6;
 }
 
-/* Сайдбар: жёлтая панель с тонкой границей, без скруглений. */
-.ant-layout-sider {
-  border-right: 1px solid #e0d9b0;
-}
-
-/* В 1С иконка пункта серая, а подпись — синяя ссылка. */
-.ant-layout-sider .ant-menu-item .anticon {
-  color: #6b6b6b;
+/* ── Сайдбар: жёлтый «Такси», серые иконки, синие ссылки-пункты ────────────── */
+.ant-layout-sider .ant-menu-item .anticon,
+.ant-layout-sider .ant-menu-submenu-title .anticon {
+  color: #6b6b70;
 }
 .ant-layout-sider .ant-menu-item-selected .anticon {
   color: #0d5aa7;
 }
-.ant-layout-sider .ant-menu-item {
-  border-bottom: 1px solid #f6efc8;
-}
 .ant-layout-sider .ant-menu-item a {
   color: #0d5aa7;
 }
-/* Современная деталь поверх 1С: активный раздел отмечен полосой слева. */
 .ant-layout-sider .ant-menu-item-selected {
   font-weight: 600;
-  box-shadow: inset 3px 0 0 #0d5aa7;
 }
 .ant-layout-sider .ant-menu-item-selected a {
-  color: #10365f;
+  color: #0d5aa7;
+}
+.ant-layout-sider .ant-menu-submenu-title {
+  font-weight: 500;
+  color: #3a3a3a;
 }
 
-/* Заголовок раздела — крупный, тёмный, со звёздой избранного как в оригинале. */
+/* Длинные названия («Администрирование») не обрезаем — переносим строкой,
+   раз ширины пункта хватает. */
+.ant-layout-sider .ant-menu-item,
+.ant-layout-sider .ant-menu-submenu-title {
+  overflow: visible;
+}
+.ant-layout-sider .ant-menu-title-content {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* ── Тонкий ненавязчивый скроллбар сайдбара ──────────────────────────────── */
+.onec-sider {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+.onec-sider::-webkit-scrollbar {
+  width: 6px;
+}
+.onec-sider::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 3px;
+}
+.onec-sider::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+.onec-sider::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Заголовки разделов — крупнее, как в новом UI ─────────────────────────── */
 .ant-page-header-heading-title,
 .ant-card-head-title {
-  font-size: 18px !important;
-  font-weight: 600 !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+.ant-list-header .ant-typography,
+h4.ant-typography {
+  letter-spacing: -0.01em;
 }
 
-/* Плотная сетка: тонкие линии по всем ячейкам, как в табличной части 1С. */
+/* ── Таблица: просторнее, тонкие линии, мягкий ховер ──────────────────────── */
+.ant-table-small .ant-table-thead > tr > th {
+  font-weight: 600;
+  font-size: 12px;
+  color: #71717a;
+  text-transform: none;
+  border-bottom: 1px solid #eeeef0;
+}
 .ant-table-small .ant-table-tbody > tr > td {
-  border-right: 1px solid #ededed;
-  line-height: 1.35;
-  /* В 1С строка всегда одной высоты: длинное значение обрезается,
-     а не переносится и не растягивает таблицу. */
+  border-bottom: 1px solid #f2f2f4;
+  line-height: 1.4;
+  /* Строка одной высоты: длинное значение обрезается, не растягивает строку. */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 260px;
-}
-.ant-table-small .ant-table-thead > tr > th {
-  border-right: 1px solid #dcdcdc;
-  font-weight: 600;
-  font-size: 12.5px;
+  max-width: 280px;
 }
 .ant-table-tbody > tr > td {
-  transition: none;
+  transition: background 0.12s;
+}
+/* Убираем вертикальные линии-разделители — в 8.5 их нет. */
+.ant-table-small .ant-table-tbody > tr > td,
+.ant-table-small .ant-table-thead > tr > th {
+  border-inline-end: none;
 }
 
-/* Строка, требующая внимания: платёж от третьего лица и подобное. */
-.onec-row-danger > td {
-  background: #fff1f0;
-}
-.ant-table-tbody > tr.onec-row-danger:hover > td {
-  background: #ffe4e1 !important;
+/* ── Статусы-пилюли: без рамки, скруглённые, мягкий фон ───────────────────── */
+.ant-tag {
+  border: none;
+  border-radius: 10px;
+  padding-inline: 9px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
-/* Панель фильтров — подпись сверху, поле снизу. */
+/* ── Панель фильтров: подпись над полем ───────────────────────────────────── */
 .onec-filter {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .onec-filter > label {
   font-size: 12px;
-  color: #444;
+  color: #71717a;
 }
 
-/* Полоса заголовка списка. */
+/* ── Полоса тулбара над таблицей ──────────────────────────────────────────── */
 .onec-toolbar {
-  border: 1px solid #e0e0e0;
-  border-bottom: none;
-  background: #fafafa;
-  padding: 8px 10px;
+  border: 1px solid #eeeef0;
+  border-radius: 10px;
+  background: #fafafb;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+/* Строка, требующая внимания (платёж от третьего лица и т.п.). */
+.onec-row-danger > td {
+  background: #fef2f2;
+}
+.ant-table-tbody > tr.onec-row-danger:hover > td {
+  background: #fee2e2 !important;
+}
+
+/* Карточки-фильтры внутри страниц — легче, со скруглением. */
+.ant-card-small > .ant-card-body {
+  padding: 12px 16px;
 }

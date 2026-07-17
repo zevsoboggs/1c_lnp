@@ -157,7 +157,7 @@ export const FinancePage = () => {
             )
             return (
               <Table.Summary fixed>
-                <Table.Summary.Row style={{ background: '#FFFCE8', fontWeight: 600 }}>
+                <Table.Summary.Row style={{ background: '#eaf2fd', fontWeight: 600 }}>
                   <Table.Summary.Cell index={0}>Итого на странице</Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="right">
                     {money(t.gross)}

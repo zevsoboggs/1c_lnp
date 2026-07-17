@@ -43,7 +43,7 @@ export function HealthBadge() {
     <Tooltip title={<span style={{ whiteSpace: 'pre-line' }}>{tip}</span>} placement="right">
       <Space size={6} style={{ padding: '8px 12px', cursor: 'default' }}>
         <Badge status={status as any} />
-        <Text style={{ fontSize: 11, color: '#7a7259' }}>
+        <Text style={{ fontSize: 11, color: '#71717a' }}>
           {text}
           {failed.length > 0 && `: ${failed.map(([k]) => k).join(', ')}`}
           {data?.status === 'ok' && ` · ${data.latencyMs} мс`}

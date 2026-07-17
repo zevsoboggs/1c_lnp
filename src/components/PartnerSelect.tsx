@@ -11,7 +11,8 @@ export function PartnerSelect({
   width = 240,
 }: {
   value?: string
-  onChange: (value?: string) => void
+  /** Второй аргумент — имя выбранного партнёра (для заголовков/отчётов). */
+  onChange: (value?: string, label?: string) => void
   width?: number
 }) {
   const { selectProps } = useSelect({
@@ -21,6 +22,8 @@ export function PartnerSelect({
     pagination: { pageSize: 200 },
   })
 
+  const options = selectProps.options as Array<{ label: string; value: string }>
+
   return (
     <Select
       allowClear
@@ -28,14 +31,14 @@ export function PartnerSelect({
       placeholder="Партнёр"
       style={{ width }}
       loading={selectProps.loading}
-      options={selectProps.options as Array<{ label: string; value: string }>}
+      options={options}
       filterOption={(input, option) =>
         String(option?.label ?? '')
           .toLowerCase()
           .includes(input.toLowerCase())
       }
       value={value}
-      onChange={(v) => onChange(v ?? undefined)}
+      onChange={(v) => onChange(v ?? undefined, options?.find((o) => o.value === v)?.label)}
     />
   )
 }

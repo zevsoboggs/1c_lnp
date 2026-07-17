@@ -197,7 +197,7 @@ export const PayoutSheet = () => {
             )}
 
             <Space size={16} align="start" wrap>
-              <Card size="small" style={{ minWidth: 240, background: '#FFFCE8' }}>
+              <Card size="small" style={{ minWidth: 240, background: '#eaf2fd' }}>
                 <Statistic
                   title="Заработок, ₽"
                   value={s.payoutRub / 100}

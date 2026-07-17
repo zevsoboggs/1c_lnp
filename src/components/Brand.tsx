@@ -13,8 +13,8 @@ export function Brand() {
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        padding: '12px 12px 10px',
-        borderBottom: '1px solid #efe5b8',
+        padding: '14px 14px 12px',
+        borderBottom: `1px solid ${C1.sidebarBorder}`,
         color: C1.text,
       }}
     >
@@ -29,7 +29,7 @@ export function Brand() {
         >
           Love<span style={{ color: '#E4002B' }}>&</span>Pay
         </span>
-        <span style={{ display: 'block', fontSize: 11, color: '#7a7259' }}>
+        <span style={{ display: 'block', fontSize: 11, color: C1.textSecondary }}>
           Платёжная платформа
         </span>
       </span>

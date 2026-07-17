@@ -6,10 +6,11 @@ import type { ReactNode } from 'react'
 import { Brand } from './Brand'
 import { HealthBadge } from './HealthBadge'
 import { UserMenu } from './UserMenu'
+import { TabsBar } from './TabsBar'
 import { getMe } from '../api/authProvider'
 import { C1 } from '../theme'
 
-const SIDER_WIDTH = 210
+const SIDER_WIDTH = 240
 
 /** Ресурс без своего маршрута — это группа: у неё нет ссылки, только дети. */
 function toMenuItem(item: TreeMenuItem): any {
@@ -59,14 +60,16 @@ export function Layout({ children }: { children: ReactNode }) {
       <AntLayout.Sider
         width={SIDER_WIDTH}
         theme="light"
+        className="onec-sider"
         style={{
           background: C1.sidebarBg,
+          borderInlineEnd: `1px solid ${C1.sidebarBorder}`,
           position: 'fixed',
           insetInlineStart: 0,
           top: 0,
           bottom: 0,
           height: '100vh',
-          overflow: 'auto',
+          overflowY: 'auto',
           zIndex: 10,
           display: 'flex',
           flexDirection: 'column',
@@ -77,19 +80,38 @@ export function Layout({ children }: { children: ReactNode }) {
           mode="inline"
           selectedKeys={[selectedKey]}
           defaultOpenKeys={defaultOpenKeys}
-          style={{ background: C1.sidebarBg, borderInlineEnd: 'none', flex: 1 }}
+          style={{ background: 'transparent', borderInlineEnd: 'none', flex: 1, paddingTop: 4 }}
           items={visibleMenu(menuItems).map(toMenuItem)}
         />
         <div>
-          <div style={{ borderTop: '1px solid #efe5b8' }}>
+          <div style={{ borderTop: `1px solid ${C1.sidebarBorder}` }}>
             <HealthBadge />
           </div>
           <UserMenu />
         </div>
       </AntLayout.Sider>
 
-      <AntLayout style={{ marginInlineStart: SIDER_WIDTH, background: '#fff' }}>
-        <AntLayout.Content style={{ padding: 12 }}>{children}</AntLayout.Content>
+      <AntLayout style={{ marginInlineStart: SIDER_WIDTH, background: C1.appBg }}>
+        {/* Строка вкладок открытых разделов — прибита к верху, как в 1С. */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+          <TabsBar />
+        </div>
+        {/* Контент — в белой карточке со скруглением и мягкой тенью на светло-
+            сером фоне, как область документа в новом UI 1С 8.5. */}
+        <AntLayout.Content style={{ padding: '0 16px 16px' }}>
+          <div
+            style={{
+              background: C1.cardBg,
+              border: `1px solid ${C1.border}`,
+              borderRadius: 14,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+              minHeight: 'calc(100vh - 60px)',
+            }}
+          >
+            {children}
+          </div>
+        </AntLayout.Content>
       </AntLayout>
     </AntLayout>
   )

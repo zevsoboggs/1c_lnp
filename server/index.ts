@@ -429,6 +429,80 @@ app.get('/api/sheets/:id/document', requireAuth, requireSection('payout-sheet'),
   }
 })
 
+// Документ-требование предоставить декларацию (домены + IP). Формируется на
+// партнёра, который не заполнил декларацию. Данные партнёра берём из admin-api.
+app.get(
+  '/api/declaration-notice/:partnerId',
+  requireAuth,
+  requireSection('declarations'),
+  async (req, res) => {
+    try {
+      const data = await lp<{ partner: any }>(`/v1/partners/${req.params.partnerId}`)
+      const p = data.partner
+      const today = dtDoc(new Date().toISOString())
+      // Срок — 5 рабочих дней; здесь считаем 7 календарных для простоты.
+      const deadline = new Date(Date.now() + 7 * 86_400_000).toISOString()
+
+      const html = renderDocument({
+        docType: 'Требование',
+        number: `ДЕКЛ-${String(p.partnerId ?? '').slice(-6).toUpperCase() || '000000'}`,
+        date: today,
+        fields: [
+          { label: 'Кому', value: `${p.name}${p.partnerId ? ` (${p.partnerId})` : ''}`, wide: true },
+          { label: 'Email', value: p.email ?? '—' },
+          { label: 'Статус API', value: p.apiBlocked ? 'заблокирован' : 'активен' },
+          { label: 'Предоставить до', value: dtDoc(deadline) },
+        ],
+        body:
+          'В соответствии с требованиями информационной безопасности платёжной ' +
+          'платформы Love&Pay, все партнёры, использующие API, обязаны задекларировать ' +
+          'домены и IP-адреса, с которых осуществляется доступ к API.\n\n' +
+          'По состоянию на дату настоящего требования в вашем профиле отсутствует ' +
+          'заполненная декларация (не указаны подтверждённые домены и/или разрешённые ' +
+          'IP-адреса).\n\n' +
+          `Просим предоставить декларацию в срок до ${dtDoc(deadline)}. В противном ` +
+          'случае доступ к API может быть ограничен до устранения нарушения.',
+        footNote: `Документ сформирован автоматически в админ-панели Love&Pay ${today}. ID партнёра: ${p.id}`,
+        signatures: ['Служба безопасности', 'Партнёр (ознакомлен)'],
+      })
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      res.send(html)
+    } catch (e: any) {
+      res.status(e.status === 404 ? 404 : 500).send('Не удалось сформировать требование')
+    }
+  },
+)
+
+// Блокировка/разблокировка API партнёра за (не)заполненную декларацию.
+// Под правом declarations, а не partners: вести декларации и карать за них —
+// функция безопасности, для неё не нужен полный доступ к редактированию партнёров.
+app.post(
+  '/api/declaration-block/:partnerId',
+  requireAuth,
+  requireSection('declarations', 'write'),
+  async (req, res) => {
+    try {
+      const blocked = req.body?.blocked === true
+      const r = await fetch(`${LP_API}/api/admin-api/v1/partners/${req.params.partnerId}`, {
+        method: 'PATCH',
+        headers: { 'X-Admin-Api-Key': LP_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiBlocked: blocked }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      const body = await r.json().catch(() => null)
+      if (!r.ok || body?.success === false) {
+        return res.status(r.status).json({ success: false, error: body?.error ?? `Ошибка ${r.status}` })
+      }
+      await writeAudit(req, blocked ? 'API_BLOCKED' : 'API_UNBLOCKED', 'partner', req.params.partnerId, {
+        reason: 'declaration',
+      })
+      res.json({ success: true, apiBlocked: blocked })
+    } catch (e: any) {
+      res.status(502).json({ success: false, error: e.message })
+    }
+  },
+)
+
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('select 1')

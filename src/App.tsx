@@ -39,6 +39,7 @@ import {
   SettingOutlined,
   SafetyOutlined,
   ToolOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import '@refinedev/antd/dist/reset.css'
 import './styles/onec.css'
@@ -83,6 +84,7 @@ import { MiniappUsers } from './pages/miniapp-users'
 import { MiniappBroadcast } from './pages/miniapp-broadcast'
 import { MiniappReferrals } from './pages/miniapp-referrals'
 import { MiniappMaintenance } from './pages/miniapp-maintenance'
+import { Reports } from './pages/reports'
 
 export default function App() {
   return (
@@ -179,6 +181,11 @@ export default function App() {
                 name: 'vcc',
                 list: '/vcc',
                 meta: { label: 'Виртуальные карты', parent: 'money', icon: <WalletOutlined /> },
+              },
+              {
+                name: 'reports',
+                list: '/reports',
+                meta: { label: 'Отчёты по партнёрам', parent: 'money', icon: <BarChartOutlined /> },
               },
 
               // ── Безопасность ─────────────────────────────────────────
@@ -326,6 +333,7 @@ export default function App() {
                 <Route path="/miniapp-referrals" element={<MiniappReferrals />} />
                 <Route path="/miniapp-broadcast" element={<MiniappBroadcast />} />
                 <Route path="/miniapp-maintenance" element={<MiniappMaintenance />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/webhooks" element={<WebhookList />} />
                 <Route path="/terminals" element={<TerminalList />} />
                 <Route path="/info-bot" element={<InfoBotPage />} />

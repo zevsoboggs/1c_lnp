@@ -129,7 +129,7 @@ export const MiniappReferrals = () => {
               { n: 0, sum: 0 },
             )
             return (
-              <Table.Summary.Row style={{ background: '#FFFCE8', fontWeight: 600 }}>
+              <Table.Summary.Row style={{ background: '#eaf2fd', fontWeight: 600 }}>
                 <Table.Summary.Cell index={0}>Итого</Table.Summary.Cell>
                 <Table.Summary.Cell index={1} align="right">
                   {t.n}
