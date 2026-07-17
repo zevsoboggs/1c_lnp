@@ -7,7 +7,9 @@ services:
     runtime: node
     plan: starter # бесплатный тир засыпает; для боевой — оставить starter/standard
     region: frankfurt # ближе к серверу БД (Европа) — меньше задержка до Postgres
-    buildCommand: npm ci && npm run build
+    # --include=dev обязателен: сборке нужны vite и @types/*, а они в
+    # devDependencies. Без флага NODE_ENV=production заставляет npm их пропустить.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

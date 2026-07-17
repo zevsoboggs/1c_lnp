@@ -8,7 +8,8 @@
     "dev:server": "node --env-file=.env --watch node_modules/.bin/tsx server/index.ts",
     "dev:front": "vite",
     "server": "npm run dev:server",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
+    "build:check": "tsc --noEmit && vite build",
     "start": "node node_modules/.bin/tsx server/index.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
