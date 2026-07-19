@@ -34,6 +34,7 @@ type ReportDef = {
 
 const REPORTS: ReportDef[] = [
   { key: 'finance', label: 'Финансовая сводка', needsPeriod: true, hint: 'Оборот, комиссия, выручка и возвраты за период' },
+  { key: 'payers', label: 'Повторные плательщики', needsPeriod: true, hint: 'Сколько раз каждый плательщик платил за период — кто платил несколько раз, вверху. Партнёра можно не выбирать — тогда отчёт по всем партнёрам сразу, с колонкой «у скольких партнёров платил».' },
   { key: 'transactions', label: 'Реестр транзакций', needsPeriod: true, hint: 'Список всех транзакций партнёра за период' },
   { key: 'invoices', label: 'Реестр счетов', needsPeriod: true, hint: 'Список выставленных счетов за период' },
   { key: 'refunds', label: 'Возвраты', needsPeriod: false, hint: 'Заявки на возврат по партнёру' },
@@ -80,9 +81,42 @@ function buildUrl(a: Applied): string {
       p.set('dateTo', a.to)
       p.set('limit', '500')
       return `/kyc-verifications?${p}`
+    case 'payers':
+      // payer-audit: границы зовутся from/to, причём to — полночь, поэтому
+      // прибавляем сутки, иначе последний день выпадает. Без partnerId эндпоинт
+      // отдаёт платежи по всем партнёрам (страницы склеиваем в runReport).
+      if (a.partnerId) p.set('partnerId', a.partnerId)
+      p.set('from', a.from)
+      p.set('to', dayjs(a.to).add(1, 'day').format('YYYY-MM-DD'))
+      p.set('limit', '500')
+      return `/payer-audit?${p}`
     default:
       return ''
   }
+}
+
+/**
+ * Загрузка данных отчёта. Обычно это один запрос, но «Повторные плательщики»
+ * по всем партнёрам — особый случай: эндпоинт отдаёт максимум 500 самых свежих
+ * платежей за запрос, а их выгребает крупнейший партнёр, из-за чего кросс-
+ * партнёрских плательщиков не видно вовсе. Поэтому листаем страницы (параметр
+ * page работает, offset — нет) и склеиваем, пока не кончатся данные.
+ */
+async function runReport(a: Applied) {
+  const url = buildUrl(a)
+  if (a.type === 'payers' && !a.partnerId) {
+    const items: any[] = []
+    let total = 0
+    for (let page = 1; page <= 12; page++) {
+      const res = await action<any>(`${url}&page=${page}`, { method: 'GET' })
+      const batch: any[] = res?.items ?? []
+      total = res?.total ?? total
+      items.push(...batch)
+      if (batch.length < 500) break
+    }
+    return { items, total }
+  }
+  return action<any>(url, { method: 'GET' })
 }
 
 export const Reports = () => {
@@ -96,16 +130,20 @@ export const Reports = () => {
 
   const q = useQuery({
     queryKey: ['report', applied],
-    queryFn: () => action<any>(buildUrl(applied!), { method: 'GET' }),
+    queryFn: () => runReport(applied!),
     enabled: !!applied,
     retry: 0,
   })
 
+  // «Повторные плательщики» умеют работать по всем партнёрам сразу — тогда
+  // партнёра можно не выбирать. Остальным отчётам партнёр обязателен.
+  const allPartnersOk = type === 'payers'
+
   const run = () => {
-    if (!partnerId) return
+    if (!partnerId && !allPartnersOk) return
     setApplied({
       type,
-      partnerId,
+      partnerId: partnerId ?? '',
       partnerName,
       from: range[0].format('YYYY-MM-DD'),
       to: range[1].format('YYYY-MM-DD'),
@@ -148,7 +186,12 @@ export const Reports = () => {
               />
             </Field>
           )}
-          <Button type="primary" icon={<BarChartOutlined />} disabled={!partnerId} onClick={run}>
+          <Button
+            type="primary"
+            icon={<BarChartOutlined />}
+            disabled={!partnerId && !allPartnersOk}
+            onClick={run}
+          >
             Сформировать
           </Button>
         </Space>
@@ -157,7 +200,15 @@ export const Reports = () => {
         </Text>
       </Card>
 
-      {!applied && <Empty description="Выберите партнёра и тип отчёта" />}
+      {!applied && (
+        <Empty
+          description={
+            allPartnersOk
+              ? 'Выберите тип отчёта. Партнёра можно не выбирать — тогда по всем сразу'
+              : 'Выберите партнёра и тип отчёта'
+          }
+        />
+      )}
 
       {applied && noAccess && (
         <Alert
@@ -190,7 +241,7 @@ function ReportResult({
   data: any
   loading: boolean
 }) {
-  const title = `${REPORTS.find((r) => r.key === applied.type)?.label} · ${applied.partnerName || 'партнёр'}`
+  const title = `${REPORTS.find((r) => r.key === applied.type)?.label} · ${applied.partnerName || 'все партнёры'}`
   const periodLabel = `${dayjs(applied.from).format('DD.MM.YYYY')} — ${dayjs(applied.to).format('DD.MM.YYYY')}`
 
   // ── Финансовая сводка ───────────────────────────────────────────────────────
@@ -227,6 +278,187 @@ function ReportResult({
             <Statistic title="Средний счёт" value={(row.averageInvoice ?? 0) / 100} precision={2} suffix="₽" />
           </Space>
         )}
+      </Card>
+    )
+  }
+
+  // ── Повторные плательщики ───────────────────────────────────────────────────
+  if (applied.type === 'payers') {
+    const items: any[] = data?.items ?? []
+    // Режим «все партнёры»: партнёра не выбрали — считаем ещё и у скольких
+    // разных партнёров платил каждый (кросс-партнёрское дробление — сильный сигнал).
+    const allPartners = !applied.partnerId
+    // Группируем по плательщику. Ключ — телефон, если есть (он уникальнее
+    // сокращённого ФИО «М Игорь Александрович»); иначе по имени.
+    type PayerRow = {
+      name: string
+      phone: string
+      count: number
+      sum: number
+      invoices: string[]
+      partners: Set<string>
+    }
+    const map = new Map<string, PayerRow>()
+    for (const it of items) {
+      const name = it.actualName
+      if (!name) continue
+      const key = it.actualPhone || name
+      const cur = map.get(key)
+      if (cur) {
+        cur.count++
+        cur.sum += Number(it.amount || 0)
+        cur.invoices.push(it.invoiceNumber)
+        if (it.partnerName) cur.partners.add(it.partnerName)
+      } else {
+        map.set(key, {
+          name,
+          phone: it.actualPhone ?? '',
+          count: 1,
+          sum: Number(it.amount || 0),
+          invoices: [it.invoiceNumber],
+          partners: new Set(it.partnerName ? [it.partnerName] : []),
+        })
+      }
+    }
+    // По всем партнёрам вперёд выносим кросс-партнёрских — они важнее всего.
+    const payers = [...map.values()].sort(
+      (a, b) =>
+        (allPartners ? b.partners.size - a.partners.size : 0) || b.count - a.count || b.sum - a.sum,
+    )
+    const repeat = payers.filter((p) => p.count > 1)
+    const crossPartner = payers.filter((p) => p.partners.size > 1)
+    const totalCapped = typeof data?.total === 'number' && data.total > items.length
+
+    return (
+      <Card
+        size="small"
+        loading={loading}
+        title={
+          <Space direction="vertical" size={0}>
+            <Text strong>{title}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Период: {periodLabel}
+            </Text>
+          </Space>
+        }
+        extra={
+          <Button
+            size="small"
+            icon={<FileExcelOutlined />}
+            disabled={!payers.length}
+            onClick={() =>
+              exportToExcel(
+                payers,
+                [
+                  { title: 'Плательщик', value: (p) => p.name },
+                  { title: 'Телефон', value: (p) => p.phone },
+                  { title: 'Платежей', value: (p) => p.count },
+                  ...(allPartners
+                    ? [
+                        { title: 'Партнёров', value: (p: PayerRow) => p.partners.size },
+                        { title: 'Партнёры', value: (p: PayerRow) => [...p.partners].join(', ') },
+                      ]
+                    : []),
+                  { title: 'Сумма, ₽', value: (p) => p.sum / 100 },
+                  { title: 'Инвойсы', value: (p) => p.invoices.join(', ') },
+                ],
+                `Повторные_плательщики_${applied.partnerName || 'все'}`.replace(/\s+/g, '_'),
+              )
+            }
+          >
+            В Excel
+          </Button>
+        }
+      >
+        <Space size={32} wrap style={{ marginBottom: 12 }}>
+          <Statistic title="Платежей" value={items.length} />
+          <Statistic title="Уникальных плательщиков" value={payers.length} />
+          <Statistic
+            title="Платили несколько раз"
+            value={repeat.length}
+            valueStyle={{ color: repeat.length ? '#d46b08' : undefined }}
+          />
+          {allPartners && (
+            <Statistic
+              title="Платили у разных партнёров"
+              value={crossPartner.length}
+              valueStyle={{ color: crossPartner.length ? '#cf1322' : undefined }}
+            />
+          )}
+        </Space>
+
+        {totalCapped && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={`Анализ по первым ${items.length} из ${data.total} платежей`}
+            description="Сузьте период, чтобы охватить всех."
+          />
+        )}
+
+        <Table
+          dataSource={payers}
+          rowKey={(_r, i) => String(i)}
+          size="small"
+          pagination={{ pageSize: 30 }}
+          scroll={{ x: allPartners ? 860 : 700 }}
+          locale={{ emptyText: 'Нет платежей за период' }}
+          // Повторных и кросс-партнёрских подсвечиваем — это сигнал для проверки.
+          rowClassName={(p: any) => (p.count > 1 || p.partners.size > 1 ? 'onec-row-danger' : '')}
+        >
+          <Table.Column
+            title="Плательщик"
+            render={(_: unknown, p: any) => <Text strong>{p.name}</Text>}
+          />
+          <Table.Column
+            title="Телефон"
+            width={160}
+            render={(_: unknown, p: any) => p.phone || <Text type="secondary">—</Text>}
+          />
+          {allPartners && (
+            <Table.Column
+              title="Партнёров"
+              width={150}
+              align="right"
+              sorter={(a: any, b: any) => a.partners.size - b.partners.size}
+              render={(_: unknown, p: any) =>
+                p.partners.size > 1 ? (
+                  <Tag color="red" style={{ fontWeight: 600 }} title={[...p.partners].join(', ')}>
+                    {p.partners.size} партнёра
+                  </Tag>
+                ) : (
+                  <Text type="secondary" title={[...p.partners].join(', ')}>
+                    {[...p.partners][0] ?? '—'}
+                  </Text>
+                )
+              }
+            />
+          )}
+          <Table.Column
+            title="Платежей"
+            width={110}
+            align="right"
+            defaultSortOrder="descend"
+            sorter={(a: any, b: any) => a.count - b.count}
+            render={(_: unknown, p: any) =>
+              p.count > 1 ? (
+                <Tag color="orange" style={{ fontWeight: 600 }}>
+                  {p.count}×
+                </Tag>
+              ) : (
+                p.count
+              )
+            }
+          />
+          <Table.Column
+            title="Сумма"
+            width={130}
+            align="right"
+            sorter={(a: any, b: any) => a.sum - b.sum}
+            render={(_: unknown, p: any) => <Text strong>{money(p.sum)}</Text>}
+          />
+        </Table>
       </Card>
     )
   }

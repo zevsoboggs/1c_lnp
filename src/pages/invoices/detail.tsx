@@ -10,6 +10,33 @@ import { action } from '../../api/actions'
 
 const { Text } = Typography
 
+/**
+ * Фактический плательщик. В полях инвойса его нет — он приходит от провайдера
+ * СБП после оплаты и лежит в транзакции. Формат зависит от провайдера:
+ *  - KANYON:  paymentInfo.payer = { name, phone }
+ *  - OVERPAY: paymentInfo.order.paymentReferenceUserName / …Phone
+ * Телефон банк отдаёт замаскированным (927***9329 / *********9962).
+ */
+function extractPayer(inv: any): { name: string; phone: string | null } | null {
+  for (const t of inv?.transactions ?? []) {
+    const pi = t.paymentInfo ?? {}
+    // KANYON — payer объектом.
+    if (pi.payer && typeof pi.payer === 'object' && pi.payer.name) {
+      return { name: pi.payer.name, phone: pi.payer.phone ?? null }
+    }
+    // OVERPAY — реквизиты в order.
+    const o = pi.order ?? {}
+    if (o.paymentReferenceUserName) {
+      return { name: o.paymentReferenceUserName, phone: o.paymentReferenceUserPhone ?? null }
+    }
+    // payer строкой — запасной вариант.
+    if (typeof pi.payer === 'string' && pi.payer) {
+      return { name: pi.payer, phone: null }
+    }
+  }
+  return null
+}
+
 export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () => void }) {
   const [printing, setPrinting] = useState(false)
 
@@ -22,6 +49,7 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
   const inv = data?.invoice
   const txns: any[] = inv?.transactions ?? []
   const refunds: any[] = inv?.refundRequests ?? []
+  const payer = inv ? extractPayer(inv) : null
 
   return (
     <Drawer
@@ -44,6 +72,32 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
 
       {inv && (
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {/* Фактический плательщик — кто реально оплатил (из данных СБП). */}
+          {payer && (
+            <Card size="small" title="Плательщик" style={{ background: '#eaf2fd' }}>
+              <Descriptions
+                size="small"
+                column={2}
+                items={[
+                  {
+                    key: 'pn',
+                    label: 'ФИО',
+                    children: <Text strong copyable>{payer.name}</Text>,
+                  },
+                  {
+                    key: 'pp',
+                    label: 'Телефон',
+                    children: payer.phone ? (
+                      <Text copyable>{payer.phone}</Text>
+                    ) : (
+                      <Text type="secondary">—</Text>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          )}
+
           <Descriptions
             size="small"
             column={2}
@@ -129,6 +183,9 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
             { label: 'Статус', value: INVOICE_STATUS.find((s) => s.value === inv.status)?.label ?? inv.status },
             { label: 'Сумма', value: money(inv.amount, inv.currency ?? 'RUB') },
             { label: 'Партнёр', value: inv.partner?.name ?? '—' },
+            ...(payer
+              ? [{ label: 'Плательщик', value: [payer.name, payer.phone].filter(Boolean).join(' · '), wide: true }]
+              : []),
             { label: 'Клиент', value: inv.customerName ?? '—' },
             { label: 'Email / телефон', value: [inv.customerEmail, inv.customerPhone].filter(Boolean).join(' · ') || '—', wide: true },
             { label: 'Создан', value: dt(inv.createdAt) },
