@@ -39,7 +39,8 @@ function toMenuItem(item: TreeMenuItem): any {
  */
 function visibleMenu(items: TreeMenuItem[]): TreeMenuItem[] {
   const perms = getMe()?.permissions ?? {}
-  const allowed = (name?: string) => !!name && (perms[name] ?? 'none') !== 'none'
+  // «Главная» — общий дашборд без отдельного права, показываем всегда.
+  const allowed = (name?: string) => !!name && (name === 'home' || (perms[name] ?? 'none') !== 'none')
 
   return items
     .map((item) => ({ ...item, children: visibleMenu(item.children ?? []) }))

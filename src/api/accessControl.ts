@@ -17,6 +17,9 @@ export const accessControlProvider: AccessControlProvider = {
     // Refine скроет группу сам, если внутри не осталось доступных пунктов.
     if (!resource) return { can: true }
 
+    // Главная — общий дашборд, доступен всем вошедшим, отдельного права нет.
+    if (resource === 'home') return { can: true }
+
     const level = me.permissions[resource] ?? 'none'
     if (level === 'none') return { can: false, reason: 'Раздел закрыт вашей ролью' }
 

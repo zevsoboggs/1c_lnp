@@ -40,6 +40,8 @@ import {
   SafetyOutlined,
   ToolOutlined,
   BarChartOutlined,
+  HomeOutlined,
+  ContactsOutlined,
 } from '@ant-design/icons'
 import '@refinedev/antd/dist/reset.css'
 import './styles/onec.css'
@@ -50,6 +52,8 @@ import { authProvider } from './api/authProvider'
 import { accessControlProvider } from './api/accessControl'
 import { Layout } from './components/Layout'
 import { LoginPage } from './pages/login'
+import { Home } from './pages/home'
+import { Employees } from './pages/employees'
 import { AdminUsers } from './pages/admin-users'
 import { AdminRoles } from './pages/admin-roles'
 import { TransactionList } from './pages/transactions/list'
@@ -99,6 +103,11 @@ export default function App() {
             notificationProvider={useNotificationProvider}
             options={{ syncWithLocation: true, warnWhenUnsavedChanges: true }}
             resources={[
+              {
+                name: 'home',
+                list: '/home',
+                meta: { label: 'Главная', icon: <HomeOutlined /> },
+              },
               {
                 name: 'transactions',
                 list: '/transactions',
@@ -282,6 +291,11 @@ export default function App() {
               // ── Администрирование ────────────────────────────────────
               { name: 'admin', meta: { label: 'Администрирование', icon: <SettingOutlined /> } },
               {
+                name: 'employees',
+                list: '/employees',
+                meta: { label: 'Сотрудники', parent: 'admin', icon: <ContactsOutlined /> },
+              },
+              {
                 name: 'admin-users',
                 list: '/admin-users',
                 meta: { label: 'Пользователи системы', parent: 'admin', icon: <IdcardOutlined /> },
@@ -304,7 +318,8 @@ export default function App() {
                   </Authenticated>
                 }
               >
-                <Route index element={<NavigateToResource resource="transactions" />} />
+                <Route index element={<NavigateToResource resource="home" />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/transactions" element={<TransactionList />} />
                 <Route path="/invoices" element={<InvoiceList />} />
                 <Route path="/partners" element={<PartnerList />} />
@@ -338,6 +353,7 @@ export default function App() {
                 <Route path="/terminals" element={<TerminalList />} />
                 <Route path="/info-bot" element={<InfoBotPage />} />
                 <Route path="/esim" element={<EsimPage />} />
+                <Route path="/employees" element={<Employees />} />
                 <Route path="/admin-users" element={<AdminUsers />} />
                 <Route path="/admin-roles" element={<AdminRoles />} />
                 <Route path="*" element={<ErrorComponent />} />
@@ -347,7 +363,7 @@ export default function App() {
               <Route
                 element={
                   <Authenticated key="out" fallback={<Outlet />}>
-                    <NavigateToResource resource="transactions" />
+                    <NavigateToResource resource="home" />
                   </Authenticated>
                 }
               >

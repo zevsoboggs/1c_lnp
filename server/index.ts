@@ -8,6 +8,7 @@ import { vcc } from './vcc.js'
 import { miniapp } from './miniapp.js'
 import { auth, requireAuth, requireSection, writeAudit } from './auth.js'
 import { adminUsers } from './adminUsers.js'
+import { employees, migrateEmployees } from './employees.js'
 import { migrateAuth } from './authSchema.js'
 
 const app = express()
@@ -27,6 +28,10 @@ app.use('/api/auth', auth)
 // сервере, поэтому открытый прокси означал бы, что доступ к ним есть
 // у любого, кто знает адрес.
 app.use('/api/admin', adminUsers)
+
+// Справочник сотрудников — внутренние данные админки, гейт на раздел стоит
+// внутри роутера (requireSection('employees')).
+app.use('/api/employees', employees)
 
 // requireSection на весь роутер: PAN/CVV и движение денег по картам должны
 // быть закрыты правом vcc, а не только фактом входа. GET — чтение, остальное —
@@ -533,6 +538,7 @@ if (process.env.SERVE_CLIENT === '1') {
 
 migrate()
   .then(migrateAuth)
+  .then(migrateEmployees)
   .then(() => {
     // На Render/облаке слушаем весь интерфейс, не только localhost.
     app.listen(PORT, '0.0.0.0', () => console.log(`[server] :${PORT}`))

@@ -124,6 +124,14 @@ h4.ant-typography {
   margin-bottom: 8px;
 }
 
+/* Приглушённая строка — неактивная запись (уволенный сотрудник и т.п.). */
+.onec-row-muted > td {
+  color: #9ca3af;
+}
+.onec-row-muted .ant-typography {
+  color: #9ca3af;
+}
+
 /* Строка, требующая внимания (платёж от третьего лица и т.п.). */
 .onec-row-danger > td {
   background: #fef2f2;

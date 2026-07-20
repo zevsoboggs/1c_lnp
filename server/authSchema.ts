@@ -100,6 +100,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'miniapp-referrals', label: 'Мини-апп: рефералка', group: 'Мини-апп' },
   { key: 'miniapp-broadcast', label: 'Мини-апп: рассылки', group: 'Мини-апп' },
   { key: 'miniapp-maintenance', label: 'Мини-апп: техработы', group: 'Мини-апп' },
+  { key: 'employees', label: 'Сотрудники', group: 'Администрирование' },
   { key: 'admin-users', label: 'Пользователи системы', group: 'Администрирование' },
   { key: 'admin-roles', label: 'Роли', group: 'Администрирование' },
 ]
