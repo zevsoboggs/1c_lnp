@@ -4,7 +4,6 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { Card, Table, Space, Typography, Select, Input, Alert, Segmented, App, Tag } from 'antd'
 import { Toolbar } from '../../components/Toolbar'
 import { salaryApi, type Assignment } from '../../api/salary'
-import { employeesApi } from '../../api/employees'
 import { canWrite } from '../../api/accessControl'
 
 const { Text } = Typography
@@ -13,7 +12,6 @@ type PartnerRow = {
   id: string
   name: string
   rateId: string | null
-  employeeId: string | null
   percent: number | null
 }
 
@@ -30,7 +28,6 @@ export const PartnerRates = () => {
   })
   const assignQ = useQuery({ queryKey: ['salary-assignments'], queryFn: salaryApi.assignments })
   const ratesQ = useQuery({ queryKey: ['salary-rates'], queryFn: salaryApi.rates })
-  const empQ = useQuery({ queryKey: ['employees'], queryFn: employeesApi.list })
 
   const assignMap = useMemo(() => {
     const m = new Map<string, Assignment>()
@@ -45,7 +42,6 @@ export const PartnerRates = () => {
         id: p.id,
         name: p.name,
         rateId: a?.rate_id ?? null,
-        employeeId: a?.employee_id ?? null,
         percent: a?.percent ?? null,
       }
     })
@@ -65,17 +61,10 @@ export const PartnerRates = () => {
   const rateOptions = (ratesQ.data?.rates ?? [])
     .filter((r) => r.is_active)
     .map((r) => ({ value: r.id, label: `${r.percent}%` }))
-  const empOptions = (empQ.data?.employees ?? [])
-    .filter((e) => e.is_active)
-    .map((e) => ({ value: e.id, label: e.full_name }))
 
   const save = useMutation({
-    mutationFn: (v: { row: PartnerRow; rateId: string | null; employeeId: string | null }) =>
-      salaryApi.setAssignment(v.row.id, {
-        partnerName: v.row.name,
-        rateId: v.rateId,
-        employeeId: v.employeeId,
-      }),
+    mutationFn: (v: { row: PartnerRow; rateId: string | null }) =>
+      salaryApi.setAssignment(v.row.id, { partnerName: v.row.name, rateId: v.rateId }),
     onSuccess: () => assignQ.refetch(),
     onError: (e: Error) => message.error(e.message, 6),
   })
@@ -90,8 +79,8 @@ export const PartnerRates = () => {
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Ставка и ответственный по каждому партнёру"
-          description="Выберите партнёру ставку (из раздела «Ставки») и сотрудника, который его ведёт. Зарплата сотрудника считается по обороту закреплённых за ним партнёров × их ставка. Изменение ставки не трогает уже сохранённые зарплатные листы."
+          message="Ставка по каждому партнёру"
+          description="Выберите партнёру ставку из раздела «Ставки». Зарплатный лист считает оборот каждого партнёра × его ставку и суммирует по всем. Изменение ставки не трогает уже сохранённые листы."
         />
         <Toolbar total={rows.length} loading={loading} onRefresh={() => { partners.query.refetch(); assignQ.refetch() }}>
           <Input.Search
@@ -130,49 +119,22 @@ export const PartnerRates = () => {
           />
           <Table.Column
             title="Ставка"
-            width={150}
+            width={170}
             render={(_: unknown, r: PartnerRow) =>
               editable ? (
                 <Select
                   size="small"
-                  style={{ width: 130 }}
-                  placeholder="—"
+                  style={{ width: 140 }}
+                  placeholder="Без ставки"
                   allowClear
                   value={r.rateId ?? undefined}
                   options={rateOptions}
-                  onChange={(rateId) =>
-                    save.mutate({ row: r, rateId: rateId ?? null, employeeId: r.employeeId })
-                  }
+                  onChange={(rateId) => save.mutate({ row: r, rateId: rateId ?? null })}
                 />
               ) : r.percent != null ? (
                 <Tag color="green">{r.percent}%</Tag>
               ) : (
                 <Text type="secondary">—</Text>
-              )
-            }
-          />
-          <Table.Column
-            title="Ответственный сотрудник"
-            width={230}
-            render={(_: unknown, r: PartnerRow) =>
-              editable ? (
-                <Select
-                  size="small"
-                  style={{ width: 210 }}
-                  placeholder="—"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  value={r.employeeId ?? undefined}
-                  options={empOptions}
-                  onChange={(employeeId) =>
-                    save.mutate({ row: r, rateId: r.rateId, employeeId: employeeId ?? null })
-                  }
-                />
-              ) : (
-                <Text type={r.employeeId ? undefined : 'secondary'}>
-                  {empOptions.find((o) => o.value === r.employeeId)?.label ?? '—'}
-                </Text>
               )
             }
           />

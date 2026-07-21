@@ -10,10 +10,7 @@ export type Assignment = {
   partner_id: string
   partner_name: string
   rate_id: string | null
-  employee_id: string | null
   percent: number | null
-  employee_name: string | null
-  employee_active: boolean | null
 }
 
 export type SheetLine = {
@@ -25,7 +22,6 @@ export type SheetLine = {
 }
 
 export type PreviewSheet = {
-  employee: { id: string; name: string }
   dateFrom: string
   dateTo: string
   lines: SheetLine[]
@@ -36,8 +32,6 @@ export type PreviewSheet = {
 export type SavedSheet = {
   id: string
   number: string
-  employee_id: string | null
-  employee_name: string
   date_from: string
   date_to: string
   total_rub: string
@@ -73,16 +67,14 @@ export const salaryApi = {
   deleteRate: (id: string) => call<{}>(`/rates/${id}`, { method: 'DELETE' }),
 
   assignments: () => call<{ assignments: Assignment[] }>('/assignments'),
-  setAssignment: (
-    partnerId: string,
-    v: { partnerName: string; rateId?: string | null; employeeId?: string | null },
-  ) => call<{}>(`/assignments/${partnerId}`, { method: 'PUT', body: JSON.stringify(v) }),
+  setAssignment: (partnerId: string, v: { partnerName: string; rateId?: string | null }) =>
+    call<{}>(`/assignments/${partnerId}`, { method: 'PUT', body: JSON.stringify(v) }),
 
-  preview: (v: { employeeId: string; dateFrom: string; dateTo: string }) =>
+  preview: (v: { dateFrom: string; dateTo: string }) =>
     call<{ sheet: PreviewSheet }>('/preview', { method: 'POST', body: JSON.stringify(v) }).then(
       (r) => r.sheet,
     ),
-  save: (v: { employeeId: string; dateFrom: string; dateTo: string; comment?: string }) =>
+  save: (v: { dateFrom: string; dateTo: string; comment?: string }) =>
     call<{ sheet: SavedSheet }>('/sheets', { method: 'POST', body: JSON.stringify(v) }).then(
       (r) => r.sheet,
     ),

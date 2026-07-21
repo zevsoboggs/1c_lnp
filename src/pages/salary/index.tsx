@@ -3,7 +3,6 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Card,
   Space,
-  Select,
   Button,
   Typography,
   Table,
@@ -31,13 +30,14 @@ import { DangerConfirm } from '../../components/DangerAction'
 import { money } from '../../lib/format'
 import { exportToExcel } from '../../lib/export'
 import { salaryApi, type PreviewSheet, type SavedSheet } from '../../api/salary'
-import { employeesApi } from '../../api/employees'
 import { canWrite } from '../../api/accessControl'
 
 dayjs.extend(isoWeek)
 
 const { Text, Title } = Typography
 const rub = (kopecks: number | string) => money(Number(kopecks))
+const periodLabel = (from: string, to: string) =>
+  `${dayjs(from).format('DD.MM.YYYY')} — ${dayjs(to).format('DD.MM.YYYY')}`
 
 /** Прошлая неделя Пн–Вс — зарплату ПМ считает именно за неё. */
 function lastMonSun(): [Dayjs, Dayjs] {
@@ -50,32 +50,25 @@ export const SalaryPage = () => {
   const { message } = App.useApp()
   const editable = canWrite('salary')
 
-  const [employeeId, setEmployeeId] = useState<string>()
   const [range, setRange] = useState<[Dayjs, Dayjs]>(lastMonSun())
   const [preview, setPreview] = useState<PreviewSheet | null>(null)
   const [comment, setComment] = useState('')
   const [viewing, setViewing] = useState<SavedSheet | null>(null)
   const [removing, setRemoving] = useState<SavedSheet | null>(null)
 
-  const empQ = useQuery({ queryKey: ['employees'], queryFn: employeesApi.list })
   const sheetsQ = useQuery({ queryKey: ['salary-sheets'], queryFn: salaryApi.sheets })
-
-  const empOptions = (empQ.data?.employees ?? [])
-    .filter((e) => e.is_active)
-    .map((e) => ({ value: e.id, label: e.full_name }))
 
   const from = range[0].format('YYYY-MM-DD')
   const to = range[1].format('YYYY-MM-DD')
 
   const calc = useMutation({
-    mutationFn: () => salaryApi.preview({ employeeId: employeeId!, dateFrom: from, dateTo: to }),
+    mutationFn: () => salaryApi.preview({ dateFrom: from, dateTo: to }),
     onSuccess: (s) => setPreview(s),
     onError: (e: Error) => message.error(e.message, 6),
   })
 
   const save = useMutation({
-    mutationFn: () =>
-      salaryApi.save({ employeeId: employeeId!, dateFrom: from, dateTo: to, comment: comment || undefined }),
+    mutationFn: () => salaryApi.save({ dateFrom: from, dateTo: to, comment: comment || undefined }),
     onSuccess: (s) => {
       message.success(`Лист ${s.number} сохранён`)
       setComment('')
@@ -98,37 +91,21 @@ export const SalaryPage = () => {
   })
 
   const run = () => {
-    if (!employeeId) return
     setPreview(null)
     calc.mutate()
   }
 
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
-      <Card title="Зарплата сотрудника" size="small">
+      <Card title="Зарплата за период" size="small">
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Оборот × ставка партнёра"
-          description="Выберите сотрудника и период (по умолчанию — прошлая неделя Пн–Вс). Считается оборот каждого закреплённого за ним партнёра × ставка партнёра. Сохранённый лист замораживает проценты и обороты — история не меняется, даже если ставки потом поправят."
+          message="Оборот × ставка по всем партнёрам"
+          description="Выберите период (по умолчанию — прошлая неделя Пн–Вс). Считается оборот каждого партнёра со ставкой × его ставка, всё суммируется в один лист. Сохранённый лист замораживает проценты и обороты — история не меняется, даже если ставки потом поправят."
         />
         <Space wrap align="end" size={12}>
-          <Field label="Сотрудник">
-            <Select
-              style={{ width: 260 }}
-              placeholder="Выберите сотрудника"
-              showSearch
-              optionFilterProp="label"
-              value={employeeId}
-              options={empOptions}
-              onChange={(v) => {
-                setEmployeeId(v)
-                setPreview(null)
-              }}
-              loading={empQ.isFetching}
-            />
-          </Field>
           <Field label="Период (неделя)">
             <DatePicker.RangePicker
               value={range}
@@ -141,7 +118,6 @@ export const SalaryPage = () => {
           <Button
             type="primary"
             icon={<CalculatorOutlined />}
-            disabled={!employeeId}
             loading={calc.isPending}
             onClick={run}
           >
@@ -155,9 +131,9 @@ export const SalaryPage = () => {
           size="small"
           title={
             <Space direction="vertical" size={0}>
-              <Text strong>Начисление · {preview.employee.name}</Text>
+              <Text strong>Зарплатный лист за период</Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                {dayjs(preview.dateFrom).format('DD.MM.YYYY')} — {dayjs(preview.dateTo).format('DD.MM.YYYY')}
+                {periodLabel(preview.dateFrom, preview.dateTo)}
               </Text>
             </Space>
           }
@@ -176,7 +152,7 @@ export const SalaryPage = () => {
                       { title: 'Ставка, %', value: (l) => l.percent },
                       { title: 'Начислено, ₽', value: (l) => l.accruedRub / 100 },
                     ],
-                    `Зарплата_${preview.employee.name}_${preview.dateFrom}`.replace(/\s+/g, '_'),
+                    `Зарплата_${preview.dateFrom}_${preview.dateTo}`,
                   )
                 }
               >
@@ -199,7 +175,7 @@ export const SalaryPage = () => {
           <Space size={32} wrap style={{ marginBottom: 12 }}>
             <Statistic title="Партнёров" value={preview.partnersCount} />
             <Statistic
-              title="Начислено за неделю"
+              title="Начислено за период"
               value={preview.totalRub / 100}
               precision={2}
               suffix="₽"
@@ -211,8 +187,8 @@ export const SalaryPage = () => {
             <Alert
               type="warning"
               showIcon
-              message="За этим сотрудником нет партнёров со ставкой"
-              description="Назначьте партнёрам ставку и этого сотрудника в разделе «Проценты партнёров»."
+              message="Нет партнёров со ставкой"
+              description="Назначьте партнёрам ставку в разделе «Проценты партнёров»."
             />
           ) : (
             <>
@@ -274,23 +250,20 @@ export const SalaryPage = () => {
           rowKey="id"
           size="small"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 760 }}
+          scroll={{ x: 680 }}
           locale={{ emptyText: 'Сохранённых листов пока нет' }}
         >
           <Table.Column dataIndex="number" title="Номер" width={110} render={(v: string) => <Text strong>{v}</Text>} />
-          <Table.Column dataIndex="employee_name" title="Сотрудник" width={200} />
           <Table.Column
             title="Период"
-            width={200}
-            render={(_: unknown, s: SavedSheet) =>
-              `${dayjs(s.date_from).format('DD.MM.YYYY')} — ${dayjs(s.date_to).format('DD.MM.YYYY')}`
-            }
+            width={220}
+            render={(_: unknown, s: SavedSheet) => periodLabel(s.date_from, s.date_to)}
           />
-          <Table.Column dataIndex="partners_count" title="Партнёров" width={100} align="right" />
+          <Table.Column dataIndex="partners_count" title="Партнёров" width={110} align="right" />
           <Table.Column
             dataIndex="total_rub"
             title="Начислено"
-            width={150}
+            width={160}
             align="right"
             render={(v: string) => <Text strong style={{ color: '#3f8600' }}>{rub(v)}</Text>}
           />
@@ -315,7 +288,7 @@ export const SalaryPage = () => {
       <DangerConfirm
         open={!!removing}
         title="Удалить зарплатный лист?"
-        what={`Лист ${removing?.number} (${removing?.employee_name}) будет удалён.`}
+        what={`Лист ${removing?.number} за ${removing ? periodLabel(removing.date_from, removing.date_to) : ''} будет удалён.`}
         confirmWord="УДАЛИТЬ"
         okText="Удалить"
         loading={remove.isPending}
@@ -340,11 +313,9 @@ function SheetDrawer({ sheet, onClose }: { sheet: SavedSheet | null; onClose: ()
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <div>
             <Title level={5} style={{ margin: 0 }}>
-              {sheet.employee_name}
+              {periodLabel(sheet.date_from, sheet.date_to)}
             </Title>
-            <Text type="secondary">
-              {dayjs(sheet.date_from).format('DD.MM.YYYY')} — {dayjs(sheet.date_to).format('DD.MM.YYYY')}
-            </Text>
+            <Text type="secondary">Партнёров: {sheet.partners_count}</Text>
           </div>
           <Statistic
             title="Начислено"

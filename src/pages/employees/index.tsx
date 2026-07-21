@@ -11,7 +11,6 @@ import {
   Modal,
   Form,
   Input,
-  InputNumber,
   Switch,
   Alert,
 } from 'antd'
@@ -45,7 +44,6 @@ export const Employees = () => {
         email: v.email,
         phone: v.phone,
         telegram: v.telegram,
-        percent: v.percent ?? 0,
         isActive: v.isActive,
         comment: v.comment,
       }
@@ -78,7 +76,7 @@ export const Employees = () => {
     setEditing(e)
     if (e === 'new') {
       form.resetFields()
-      form.setFieldsValue({ isActive: true, percent: 0 })
+      form.setFieldsValue({ isActive: true })
     } else {
       form.setFieldsValue({
         fullName: e.full_name,
@@ -86,7 +84,6 @@ export const Employees = () => {
         email: e.email,
         phone: e.phone,
         telegram: e.telegram,
-        percent: e.percent,
         isActive: e.is_active,
         comment: e.comment,
       })
@@ -117,8 +114,8 @@ export const Employees = () => {
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Справочник сотрудников и их процент"
-          description="Процент — доля сотрудника от оборота. На него будет опираться модуль расчёта зарплаты."
+          message="Справочник сотрудников"
+          description="ФИО, должность и контакты сотрудников компании."
         />
         <Toolbar total={rows.length} loading={q.isFetching} onRefresh={() => q.refetch()}>
           <Text type="secondary" style={{ fontSize: 12 }}>
@@ -146,16 +143,6 @@ export const Employees = () => {
             title="Должность"
             width={170}
             render={(v: string) => v || <Text type="secondary">—</Text>}
-          />
-          <Table.Column
-            dataIndex="percent"
-            title="Процент"
-            width={110}
-            align="right"
-            sorter={(a: Employee, b: Employee) => a.percent - b.percent}
-            render={(v: number) =>
-              v ? <Tag color="green" style={{ fontWeight: 600 }}>{v}%</Tag> : <Text type="secondary">0%</Text>
-            }
           />
           <Table.Column
             dataIndex="phone"
@@ -232,29 +219,11 @@ export const Employees = () => {
           <Form.Item name="position" label="Должность">
             <Input placeholder="Менеджер, оператор, руководитель…" />
           </Form.Item>
-          <Space size={12} style={{ display: 'flex' }} align="start">
-            <Form.Item
-              name="percent"
-              label="Процент от оборота"
-              extra="Доля для расчёта зарплаты"
-              style={{ flex: 1 }}
-              rules={[{ type: 'number', min: 0, max: 100, message: '0–100' }]}
-            >
-              <InputNumber
-                min={0}
-                max={100}
-                step={0.5}
-                precision={3}
-                addonAfter="%"
-                style={{ width: '100%' }}
-              />
+          {editing !== 'new' && (
+            <Form.Item name="isActive" label="Работает" valuePropName="checked">
+              <Switch size="small" />
             </Form.Item>
-            {editing !== 'new' && (
-              <Form.Item name="isActive" label="Работает" valuePropName="checked">
-                <Switch size="small" />
-              </Form.Item>
-            )}
-          </Space>
+          )}
           <Form.Item name="phone" label="Телефон">
             <Input placeholder="+7 900 000-00-00" />
           </Form.Item>
