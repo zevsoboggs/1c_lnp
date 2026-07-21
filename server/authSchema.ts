@@ -81,6 +81,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'payouts', label: 'Выплаты', group: 'Финансы' },
   { key: 'withdrawals', label: 'Выводы', group: 'Финансы' },
   { key: 'payout-sheet', label: 'Расчёт заработка', group: 'Финансы' },
+  { key: 'salary', label: 'Зарплата', group: 'Финансы' },
   { key: 'markups', label: 'Наценки', group: 'Финансы' },
   { key: 'pos-markups', label: 'POS-наценки', group: 'Финансы' },
   { key: 'referral-overrides', label: 'Реф. наценки', group: 'Финансы' },
@@ -100,7 +101,9 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'miniapp-referrals', label: 'Мини-апп: рефералка', group: 'Мини-апп' },
   { key: 'miniapp-broadcast', label: 'Мини-апп: рассылки', group: 'Мини-апп' },
   { key: 'miniapp-maintenance', label: 'Мини-апп: техработы', group: 'Мини-апп' },
-  { key: 'employees', label: 'Сотрудники', group: 'Администрирование' },
+  { key: 'employees', label: 'Сотрудники', group: 'Справочники' },
+  { key: 'salary-rates', label: 'Ставки', group: 'Справочники' },
+  { key: 'partner-rates', label: 'Проценты партнёров', group: 'Справочники' },
   { key: 'admin-users', label: 'Пользователи системы', group: 'Администрирование' },
   { key: 'admin-roles', label: 'Роли', group: 'Администрирование' },
 ]

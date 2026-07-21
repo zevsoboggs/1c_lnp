@@ -42,6 +42,8 @@ import {
   BarChartOutlined,
   HomeOutlined,
   ContactsOutlined,
+  BookOutlined,
+  MoneyCollectOutlined,
 } from '@ant-design/icons'
 import '@refinedev/antd/dist/reset.css'
 import './styles/onec.css'
@@ -54,6 +56,9 @@ import { Layout } from './components/Layout'
 import { LoginPage } from './pages/login'
 import { Home } from './pages/home'
 import { Employees } from './pages/employees'
+import { SalaryRates } from './pages/salary-rates'
+import { PartnerRates } from './pages/partner-rates'
+import { SalaryPage } from './pages/salary'
 import { AdminUsers } from './pages/admin-users'
 import { AdminRoles } from './pages/admin-roles'
 import { TransactionList } from './pages/transactions/list'
@@ -172,6 +177,11 @@ export default function App() {
                 meta: { label: 'Расчёт заработка', parent: 'money', icon: <CalculatorOutlined /> },
               },
               {
+                name: 'salary',
+                list: '/salary',
+                meta: { label: 'Зарплата', parent: 'money', icon: <MoneyCollectOutlined /> },
+              },
+              {
                 name: 'markups',
                 list: '/markups',
                 meta: { label: 'Наценки', parent: 'money', icon: <PercentageOutlined /> },
@@ -288,13 +298,26 @@ export default function App() {
                 meta: { label: 'Техработы', parent: 'miniapp', icon: <ToolOutlined /> },
               },
 
-              // ── Администрирование ────────────────────────────────────
-              { name: 'admin', meta: { label: 'Администрирование', icon: <SettingOutlined /> } },
+              // ── Справочники ──────────────────────────────────────────
+              { name: 'refs', meta: { label: 'Справочники', icon: <BookOutlined /> } },
               {
                 name: 'employees',
                 list: '/employees',
-                meta: { label: 'Сотрудники', parent: 'admin', icon: <ContactsOutlined /> },
+                meta: { label: 'Сотрудники', parent: 'refs', icon: <ContactsOutlined /> },
               },
+              {
+                name: 'salary-rates',
+                list: '/salary-rates',
+                meta: { label: 'Ставки', parent: 'refs', icon: <PercentageOutlined /> },
+              },
+              {
+                name: 'partner-rates',
+                list: '/partner-rates',
+                meta: { label: 'Проценты партнёров', parent: 'refs', icon: <SolutionOutlined /> },
+              },
+
+              // ── Администрирование ────────────────────────────────────
+              { name: 'admin', meta: { label: 'Администрирование', icon: <SettingOutlined /> } },
               {
                 name: 'admin-users',
                 list: '/admin-users',
@@ -354,6 +377,9 @@ export default function App() {
                 <Route path="/info-bot" element={<InfoBotPage />} />
                 <Route path="/esim" element={<EsimPage />} />
                 <Route path="/employees" element={<Employees />} />
+                <Route path="/salary-rates" element={<SalaryRates />} />
+                <Route path="/partner-rates" element={<PartnerRates />} />
+                <Route path="/salary" element={<SalaryPage />} />
                 <Route path="/admin-users" element={<AdminUsers />} />
                 <Route path="/admin-roles" element={<AdminRoles />} />
                 <Route path="*" element={<ErrorComponent />} />

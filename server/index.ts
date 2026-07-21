@@ -9,6 +9,7 @@ import { miniapp } from './miniapp.js'
 import { auth, requireAuth, requireSection, writeAudit } from './auth.js'
 import { adminUsers } from './adminUsers.js'
 import { employees, migrateEmployees } from './employees.js'
+import { salary, migrateSalary } from './salary.js'
 import { migrateAuth } from './authSchema.js'
 
 const app = express()
@@ -32,6 +33,10 @@ app.use('/api/admin', adminUsers)
 // Справочник сотрудников — внутренние данные админки, гейт на раздел стоит
 // внутри роутера (requireSection('employees')).
 app.use('/api/employees', employees)
+
+// Зарплата: ставки, назначения партнёрам и зарплатные листы. Разные права
+// (salary-rates / partner-rates / salary) проверяются внутри роутера.
+app.use('/api/salary', salary)
 
 // requireSection на весь роутер: PAN/CVV и движение денег по картам должны
 // быть закрыты правом vcc, а не только фактом входа. GET — чтение, остальное —
@@ -539,6 +544,7 @@ if (process.env.SERVE_CLIENT === '1') {
 migrate()
   .then(migrateAuth)
   .then(migrateEmployees)
+  .then(migrateSalary)
   .then(() => {
     // На Render/облаке слушаем весь интерфейс, не только localhost.
     app.listen(PORT, '0.0.0.0', () => console.log(`[server] :${PORT}`))
