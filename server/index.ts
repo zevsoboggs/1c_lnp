@@ -513,6 +513,81 @@ app.post(
   },
 )
 
+/**
+ * Повторные плательщики — из транзакций, а не из payer-audit.
+ *
+ * payer-audit в этом окружении заморожен на 01.07 и свежих платежей не отдаёт,
+ * поэтому отчёт брал пустоту. Транзакции живые и уже несут фактического
+ * плательщика (paymentInfo.payer = {name, phone}) в каждой записи — по ним и
+ * считаем. Берём только успешные (COMPLETED) — это и есть «кто оплатил».
+ *
+ * Отдаём в той же форме, что payer-audit (items с actualName/actualPhone/…),
+ * чтобы фронт-группировка отчёта не менялась.
+ */
+app.get('/api/repeat-payers', requireAuth, requireSection('reports'), async (req, res) => {
+  try {
+    const partnerId = String(req.query.partnerId || '').trim()
+    const from = String(req.query.from || '')
+    const to = String(req.query.to || '')
+    if (!from || !to) return res.status(400).json({ success: false, error: 'Не задан период' })
+
+    const PAGE = 200
+    // Потолок страниц: у одного партнёра запас большой, по всем — скромнее,
+    // иначе один тяжёлый отчёт выгребет десятки тысяч транзакций.
+    const maxPages = partnerId ? 60 : 40
+
+    const items: Array<{
+      actualName: string
+      actualPhone: string | null
+      amount: number
+      invoiceNumber: string
+      partnerName: string
+    }> = []
+    let totalTransactions = 0
+    let fetched = 0
+    let completedWithPayer = 0
+
+    for (let page = 1; page <= maxPages; page++) {
+      const q = new URLSearchParams({ dateFrom: from, dateTo: to, limit: String(PAGE), page: String(page) })
+      if (partnerId) q.set('partner', partnerId)
+      const r = await lp<{ transactions?: any[]; pagination?: { total?: number } }>(`/v1/transactions?${q}`)
+      const tx = r.transactions ?? []
+      totalTransactions = r.pagination?.total ?? totalTransactions
+      fetched += tx.length
+
+      for (const t of tx) {
+        if (t.status !== 'COMPLETED') continue
+        const raw = t.paymentInfo?.payer
+        const name = raw && typeof raw === 'object' ? raw.name : typeof raw === 'string' ? raw : null
+        if (!name) continue
+        const phone = raw && typeof raw === 'object' ? (raw.phone ?? null) : null
+        completedWithPayer++
+        items.push({
+          actualName: name,
+          actualPhone: phone,
+          amount: Number(t.amount) || 0,
+          invoiceNumber: t.invoice?.invoiceNumber ?? t.merchantOrderId ?? '',
+          partnerName: t.partner?.name ?? '',
+        })
+      }
+      if (tx.length < PAGE) break
+    }
+
+    // Упёрлись в потолок страниц — значит охватили не все транзакции.
+    const capped = fetched < totalTransactions
+    res.json({
+      success: true,
+      items,
+      total: completedWithPayer,
+      capped,
+      scannedTransactions: fetched,
+      totalTransactions,
+    })
+  } catch (e: any) {
+    res.status(e.status ?? 500).json({ success: false, error: e.message })
+  }
+})
+
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('select 1')

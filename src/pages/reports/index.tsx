@@ -81,42 +81,36 @@ function buildUrl(a: Applied): string {
       p.set('dateTo', a.to)
       p.set('limit', '500')
       return `/kyc-verifications?${p}`
-    case 'payers':
-      // payer-audit: границы зовутся from/to, причём to — полночь, поэтому
-      // прибавляем сутки, иначе последний день выпадает. Без partnerId эндпоинт
-      // отдаёт платежи по всем партнёрам (страницы склеиваем в runReport).
-      if (a.partnerId) p.set('partnerId', a.partnerId)
-      p.set('from', a.from)
-      p.set('to', dayjs(a.to).add(1, 'day').format('YYYY-MM-DD'))
-      p.set('limit', '500')
-      return `/payer-audit?${p}`
     default:
       return ''
   }
 }
 
+/** Запрос к своему бэкенду (не к admin-api через прокси). */
+async function fetchBackend<T>(path: string): Promise<T> {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' } })
+  const body = await res.json().catch(() => null)
+  if (!res.ok || body?.success === false) throw new Error(body?.error ?? `Ошибка ${res.status}`)
+  return body as T
+}
+
 /**
- * Загрузка данных отчёта. Обычно это один запрос, но «Повторные плательщики»
- * по всем партнёрам — особый случай: эндпоинт отдаёт максимум 500 самых свежих
- * платежей за запрос, а их выгребает крупнейший партнёр, из-за чего кросс-
- * партнёрских плательщиков не видно вовсе. Поэтому листаем страницы (параметр
- * page работает, offset — нет) и склеиваем, пока не кончатся данные.
+ * Загрузка данных отчёта.
+ *
+ * «Повторные плательщики» идут в отдельный эндпоинт /api/repeat-payers: он
+ * считает плательщиков по ЖИВЫМ транзакциям, а не по payer-audit (тот в этом
+ * окружении заморожен на 01.07 и свежих платежей не отдаёт). Границы — from/to,
+ * to берём +сутки, иначе последний день выпадает.
  */
 async function runReport(a: Applied) {
-  const url = buildUrl(a)
-  if (a.type === 'payers' && !a.partnerId) {
-    const items: any[] = []
-    let total = 0
-    for (let page = 1; page <= 12; page++) {
-      const res = await action<any>(`${url}&page=${page}`, { method: 'GET' })
-      const batch: any[] = res?.items ?? []
-      total = res?.total ?? total
-      items.push(...batch)
-      if (batch.length < 500) break
-    }
-    return { items, total }
+  if (a.type === 'payers') {
+    const p = new URLSearchParams()
+    if (a.partnerId) p.set('partnerId', a.partnerId)
+    p.set('from', a.from)
+    p.set('to', dayjs(a.to).add(1, 'day').format('YYYY-MM-DD'))
+    return fetchBackend<any>(`/api/repeat-payers?${p}`)
   }
-  return action<any>(url, { method: 'GET' })
+  return action<any>(buildUrl(a), { method: 'GET' })
 }
 
 export const Reports = () => {
@@ -327,7 +321,8 @@ function ReportResult({
     )
     const repeat = payers.filter((p) => p.count > 1)
     const crossPartner = payers.filter((p) => p.partners.size > 1)
-    const totalCapped = typeof data?.total === 'number' && data.total > items.length
+    // Сервер выставляет capped, если упёрся в потолок и охватил не все транзакции.
+    const totalCapped = !!data?.capped
 
     return (
       <Card
@@ -392,8 +387,8 @@ function ReportResult({
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
-            message={`Анализ по первым ${items.length} из ${data.total} платежей`}
-            description="Сузьте период, чтобы охватить всех."
+            message={`Проверено ${data.scannedTransactions} из ${data.totalTransactions} транзакций за период`}
+            description="Сузьте период или выберите одного партнёра, чтобы охватить всех."
           />
         )}
 
