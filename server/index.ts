@@ -48,7 +48,7 @@ app.use('/api/vcc', requireAuth, vccGate, vcc)
 // иначе оператор без права miniapp-broadcast мог бы разослать сообщение всем.
 app.use('/api/miniapp', requireAuth, miniappGate, miniapp)
 
-const LP_API = (process.env.ADMIN_API_URL || 'https://loveandpay.io').replace(/\/$/, '')
+const LP_API = (process.env.ADMIN_API_URL || 'https://api.prod.loveandpay.io').replace(/\/$/, '')
 const LP_KEY = (process.env.ADMIN_API_KEY || '').split(',')[0].trim()
 const PORT = Number(process.env.PORT || 5274)
 
@@ -129,13 +129,8 @@ function sectionOfPath(url: string): string | null {
     'referral-overrides': 'referral-overrides',
     'kyc-billing': 'kyc-billing',
     'kyc-verifications': 'kyc-verifications',
-    'aml-guard': 'aml-guard',
-    'payer-audit': 'payer-audit',
-    declarations: 'declarations',
     'api-logs': 'api-logs',
     'audit-logs': 'audit-logs',
-    'info-bot': 'info-bot',
-    esim: 'esim',
   }
   // /v1/partners/hierarchy — отдельный раздел, а не карточка партнёра.
   if (url.startsWith('/v1/partners/hierarchy')) return 'hierarchy'
@@ -439,91 +434,43 @@ app.get('/api/sheets/:id/document', requireAuth, requireSection('payout-sheet'),
   }
 })
 
-// Документ-требование предоставить декларацию (домены + IP). Формируется на
-// партнёра, который не заполнил декларацию. Данные партнёра берём из admin-api.
-app.get(
-  '/api/declaration-notice/:partnerId',
-  requireAuth,
-  requireSection('declarations'),
-  async (req, res) => {
-    try {
-      const data = await lp<{ partner: any }>(`/v1/partners/${req.params.partnerId}`)
-      const p = data.partner
-      const today = dtDoc(new Date().toISOString())
-      // Срок — 5 рабочих дней; здесь считаем 7 календарных для простоты.
-      const deadline = new Date(Date.now() + 7 * 86_400_000).toISOString()
-
-      const html = renderDocument({
-        docType: 'Требование',
-        number: `ДЕКЛ-${String(p.partnerId ?? '').slice(-6).toUpperCase() || '000000'}`,
-        date: today,
-        fields: [
-          { label: 'Кому', value: `${p.name}${p.partnerId ? ` (${p.partnerId})` : ''}`, wide: true },
-          { label: 'Email', value: p.email ?? '—' },
-          { label: 'Статус API', value: p.apiBlocked ? 'заблокирован' : 'активен' },
-          { label: 'Предоставить до', value: dtDoc(deadline) },
-        ],
-        body:
-          'В соответствии с требованиями информационной безопасности платёжной ' +
-          'платформы Love&Pay, все партнёры, использующие API, обязаны задекларировать ' +
-          'домены и IP-адреса, с которых осуществляется доступ к API.\n\n' +
-          'По состоянию на дату настоящего требования в вашем профиле отсутствует ' +
-          'заполненная декларация (не указаны подтверждённые домены и/или разрешённые ' +
-          'IP-адреса).\n\n' +
-          `Просим предоставить декларацию в срок до ${dtDoc(deadline)}. В противном ` +
-          'случае доступ к API может быть ограничен до устранения нарушения.',
-        footNote: `Документ сформирован автоматически в админ-панели Love&Pay ${today}. ID партнёра: ${p.id}`,
-        signatures: ['Служба безопасности', 'Партнёр (ознакомлен)'],
-      })
-      res.setHeader('Content-Type', 'text/html; charset=utf-8')
-      res.send(html)
-    } catch (e: any) {
-      res.status(e.status === 404 ? 404 : 500).send('Не удалось сформировать требование')
-    }
-  },
-)
-
-// Блокировка/разблокировка API партнёра за (не)заполненную декларацию.
-// Под правом declarations, а не partners: вести декларации и карать за них —
-// функция безопасности, для неё не нужен полный доступ к редактированию партнёров.
-app.post(
-  '/api/declaration-block/:partnerId',
-  requireAuth,
-  requireSection('declarations', 'write'),
-  async (req, res) => {
-    try {
-      const blocked = req.body?.blocked === true
-      const r = await fetch(`${LP_API}/api/admin-api/v1/partners/${req.params.partnerId}`, {
-        method: 'PATCH',
-        headers: { 'X-Admin-Api-Key': LP_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiBlocked: blocked }),
-        signal: AbortSignal.timeout(30_000),
-      })
-      const body = await r.json().catch(() => null)
-      if (!r.ok || body?.success === false) {
-        return res.status(r.status).json({ success: false, error: body?.error ?? `Ошибка ${r.status}` })
-      }
-      await writeAudit(req, blocked ? 'API_BLOCKED' : 'API_UNBLOCKED', 'partner', req.params.partnerId, {
-        reason: 'declaration',
-      })
-      res.json({ success: true, apiBlocked: blocked })
-    } catch (e: any) {
-      res.status(502).json({ success: false, error: e.message })
-    }
-  },
-)
-
 /**
- * Повторные плательщики — из транзакций, а не из payer-audit.
+ * Повторные плательщики — из транзакций.
  *
- * payer-audit в этом окружении заморожен на 01.07 и свежих платежей не отдаёт,
- * поэтому отчёт брал пустоту. Транзакции живые и уже несут фактического
- * плательщика (paymentInfo.payer = {name, phone}) в каждой записи — по ним и
- * считаем. Берём только успешные (COMPLETED) — это и есть «кто оплатил».
+ * В новом admin-api payer-audit убран, а плательщик (paymentInfo.payer) есть
+ * только в карточке транзакции (GET /transactions/{id}), не в списке. Поэтому
+ * тянем список COMPLETED-транзакций за период, затем по каждой добираем карточку
+ * и берём плательщика. Берём только успешные — это и есть «кто оплатил».
  *
- * Отдаём в той же форме, что payer-audit (items с actualName/actualPhone/…),
- * чтобы фронт-группировка отчёта не менялась.
+ * Отдаём items с actualName/actualPhone/… — чтобы фронт-группировка не менялась.
  */
+/** Достаёт плательщика из paymentInfo карточки транзакции (форматы разных эквайеров). */
+function extractTxnPayer(pi: any): { name: string; phone: string | null } | null {
+  if (!pi) return null
+  const p = pi.payer
+  if (p && typeof p === 'object' && p.name) return { name: p.name, phone: p.phone ?? null }
+  if (typeof p === 'string' && p) return { name: p, phone: null }
+  const o = pi.order ?? {}
+  if (o.paymentReferenceUserName) {
+    return { name: o.paymentReferenceUserName, phone: o.paymentReferenceUserPhone ?? null }
+  }
+  return null
+}
+
+/** Обходит items с ограничением параллельности, чтобы не завалить admin-api. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let i = 0
+  const worker = async () => {
+    while (i < items.length) {
+      const idx = i++
+      out[idx] = await fn(items[idx])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return out
+}
+
 app.get('/api/repeat-payers', requireAuth, requireSection('reports'), async (req, res) => {
   try {
     const partnerId = String(req.query.partnerId || '').trim()
@@ -532,56 +479,66 @@ app.get('/api/repeat-payers', requireAuth, requireSection('reports'), async (req
     if (!from || !to) return res.status(400).json({ success: false, error: 'Не задан период' })
 
     const PAGE = 200
-    // Потолок страниц: у одного партнёра запас большой, по всем — скромнее,
-    // иначе один тяжёлый отчёт выгребет десятки тысяч транзакций.
-    const maxPages = partnerId ? 60 : 40
+    // Сколько карточек транзакций максимум добираем (каждая — отдельный запрос).
+    const maxDetails = partnerId ? 1500 : 800
 
-    const items: Array<{
-      actualName: string
-      actualPhone: string | null
-      amount: number
-      invoiceNumber: string
-      partnerName: string
-    }> = []
-    let totalTransactions = 0
-    let fetched = 0
-    let completedWithPayer = 0
-
-    for (let page = 1; page <= maxPages; page++) {
-      const q = new URLSearchParams({ dateFrom: from, dateTo: to, limit: String(PAGE), page: String(page) })
+    // 1. Собираем ссылки на успешные транзакции из списка (плательщика в списке
+    //    нет — он только в карточке). Список фильтруем по status=COMPLETED.
+    const refs: Array<{ id: string; amount: number; invoiceNumber: string; partnerName: string }> = []
+    let totalCompleted = 0
+    for (let page = 1; page <= 80; page++) {
+      const q = new URLSearchParams({
+        status: 'COMPLETED',
+        dateFrom: from,
+        dateTo: to,
+        limit: String(PAGE),
+        page: String(page),
+      })
       if (partnerId) q.set('partner', partnerId)
       const r = await lp<{ transactions?: any[]; pagination?: { total?: number } }>(`/v1/transactions?${q}`)
       const tx = r.transactions ?? []
-      totalTransactions = r.pagination?.total ?? totalTransactions
-      fetched += tx.length
-
+      totalCompleted = r.pagination?.total ?? totalCompleted
       for (const t of tx) {
-        if (t.status !== 'COMPLETED') continue
-        const raw = t.paymentInfo?.payer
-        const name = raw && typeof raw === 'object' ? raw.name : typeof raw === 'string' ? raw : null
-        if (!name) continue
-        const phone = raw && typeof raw === 'object' ? (raw.phone ?? null) : null
-        completedWithPayer++
-        items.push({
-          actualName: name,
-          actualPhone: phone,
-          amount: Number(t.amount) || 0,
-          invoiceNumber: t.invoice?.invoiceNumber ?? t.merchantOrderId ?? '',
-          partnerName: t.partner?.name ?? '',
-        })
+        if (refs.length < maxDetails) {
+          refs.push({
+            id: t.id,
+            amount: Number(t.amount) || 0,
+            invoiceNumber: t.invoice?.invoiceNumber ?? t.merchantOrderId ?? '',
+            partnerName: t.partner?.name ?? '',
+          })
+        }
       }
-      if (tx.length < PAGE) break
+      if (tx.length < PAGE || refs.length >= maxDetails) break
     }
 
-    // Упёрлись в потолок страниц — значит охватили не все транзакции.
-    const capped = fetched < totalTransactions
+    // 2. По каждой транзакции добираем карточку и вытаскиваем плательщика.
+    const detailed = await mapLimit(refs, 8, async (ref) => {
+      try {
+        const d = await lp<{ transaction?: any }>(`/v1/transactions/${ref.id}`)
+        const payer = extractTxnPayer(d.transaction?.paymentInfo)
+        if (!payer) return null
+        return {
+          actualName: payer.name,
+          actualPhone: payer.phone,
+          amount: ref.amount,
+          invoiceNumber: ref.invoiceNumber,
+          partnerName: ref.partnerName,
+        }
+      } catch {
+        return null
+      }
+    })
+    const items = detailed.filter(Boolean)
+
+    // Упёрлись в потолок карточек — охватили не все успешные транзакции.
+    const capped = totalCompleted > refs.length
     res.json({
       success: true,
       items,
-      total: completedWithPayer,
+      total: items.length,
       capped,
-      scannedTransactions: fetched,
-      totalTransactions,
+      scannedTransactions: refs.length,
+      totalTransactions: totalCompleted,
     })
   } catch (e: any) {
     res.status(e.status ?? 500).json({ success: false, error: e.message })

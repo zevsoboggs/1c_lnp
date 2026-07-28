@@ -74,7 +74,7 @@ export async function migrateSalary() {
 
 // Запрос в admin-api loveandpay — ключ живёт только на сервере. Дубль хелпера
 // из index.ts намеренный: не тащим сюда весь index ради одного вызова.
-const LP_API = (process.env.ADMIN_API_URL || 'https://loveandpay.io').replace(/\/$/, '')
+const LP_API = (process.env.ADMIN_API_URL || 'https://api.prod.loveandpay.io').replace(/\/$/, '')
 const LP_KEY = (process.env.ADMIN_API_KEY || '').split(',')[0].trim()
 
 async function lp<T = any>(path: string): Promise<T> {

@@ -12,8 +12,6 @@ import {
   CreditCardOutlined,
   CalculatorOutlined,
   DesktopOutlined,
-  NotificationOutlined,
-  GlobalOutlined,
   ApiOutlined,
   RollbackOutlined,
   DollarOutlined,
@@ -24,9 +22,6 @@ import {
   SafetyCertificateOutlined,
   IdcardOutlined,
   ExportOutlined,
-  SecurityScanOutlined,
-  FileProtectOutlined,
-  AuditOutlined,
   SolutionOutlined,
   ClusterOutlined,
   WalletOutlined,
@@ -68,8 +63,6 @@ import { UserList } from './pages/users/list'
 import { PayoutList } from './pages/payouts/list'
 import { PayoutSheet } from './pages/payout-sheet'
 import { TerminalList } from './pages/terminals/list'
-import { InfoBotPage } from './pages/info-bot'
-import { EsimPage } from './pages/esim'
 import { WebhookList } from './pages/webhooks/list'
 import { RefundList } from './pages/refunds/list'
 import { FinancePage } from './pages/finance'
@@ -80,10 +73,7 @@ import { PosMarkupList } from './pages/pos-markups/list'
 import { ReferralOverrideList } from './pages/referral-overrides/list'
 import { KycBillingList } from './pages/kyc-billing/list'
 import { KycVerificationList } from './pages/kyc-verifications/list'
-import { DeclarationList } from './pages/declarations/list'
 import { HierarchyPage } from './pages/hierarchy'
-import { AmlGuardPage } from './pages/aml-guard'
-import { PayerAuditPage } from './pages/payer-audit'
 import { PartnerModerationPage } from './pages/partner-moderation'
 import { VccPage } from './pages/vcc'
 import { ApiLogList } from './pages/api-logs/list'
@@ -207,24 +197,6 @@ export default function App() {
                 meta: { label: 'Отчёты по партнёрам', parent: 'money', icon: <BarChartOutlined /> },
               },
 
-              // ── Безопасность ─────────────────────────────────────────
-              { name: 'security', meta: { label: 'Безопасность', icon: <SecurityScanOutlined /> } },
-              {
-                name: 'aml-guard',
-                list: '/aml-guard',
-                meta: { label: 'AML-Guard', parent: 'security', icon: <SecurityScanOutlined /> },
-              },
-              {
-                name: 'payer-audit',
-                list: '/payer-audit',
-                meta: { label: 'Аудит плательщиков', parent: 'security', icon: <AuditOutlined /> },
-              },
-              {
-                name: 'declarations',
-                list: '/declarations',
-                meta: { label: 'Декларации', parent: 'security', icon: <FileProtectOutlined /> },
-              },
-
               // ── Журналы ──────────────────────────────────────────────
               { name: 'logs', meta: { label: 'Журналы', icon: <ProfileOutlined /> } },
               {
@@ -256,19 +228,9 @@ export default function App() {
                 meta: { label: 'Терминалы', icon: <DesktopOutlined /> },
               },
               {
-                name: 'info-bot',
-                list: '/info-bot',
-                meta: { label: 'Info-бот', icon: <NotificationOutlined /> },
-              },
-              {
                 name: 'webhooks',
                 list: '/webhooks',
                 meta: { label: 'Вебхуки', icon: <ApiOutlined /> },
-              },
-              {
-                name: 'esim',
-                list: '/esim',
-                meta: { label: 'eSIM', icon: <GlobalOutlined /> },
               },
               // ── Мини-апп ─────────────────────────────────────────────
               { name: 'miniapp', meta: { label: 'Мини-апп', icon: <MobileOutlined /> } },
@@ -360,9 +322,6 @@ export default function App() {
                 <Route path="/kyc-billing" element={<KycBillingList />} />
                 <Route path="/partner-moderation" element={<PartnerModerationPage />} />
                 <Route path="/hierarchy" element={<HierarchyPage />} />
-                <Route path="/aml-guard" element={<AmlGuardPage />} />
-                <Route path="/payer-audit" element={<PayerAuditPage />} />
-                <Route path="/declarations" element={<DeclarationList />} />
                 <Route path="/vcc" element={<VccPage />} />
                 <Route path="/api-logs" element={<ApiLogList />} />
                 <Route path="/audit-logs" element={<AuditLogList />} />
@@ -374,8 +333,6 @@ export default function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/webhooks" element={<WebhookList />} />
                 <Route path="/terminals" element={<TerminalList />} />
-                <Route path="/info-bot" element={<InfoBotPage />} />
-                <Route path="/esim" element={<EsimPage />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/salary-rates" element={<SalaryRates />} />
                 <Route path="/partner-rates" element={<PartnerRates />} />

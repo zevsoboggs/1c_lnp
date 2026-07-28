@@ -200,35 +200,6 @@ export const RESOURCES: Record<string, ResourceSpec> = {
     },
   },
 
-  declarations: {
-    path: 'declarations',
-    listKey: 'declarations',
-    paginated: true,
-    defaultLimit: 50,
-    readOnly: true,
-    filters: {
-      partnerId: 'partnerId',
-      hasDeclaration: 'hasDeclaration',
-      usingApi: 'usingApi',
-    },
-  },
-
-  'esim-plans': {
-    path: 'esim/plans',
-    listKey: 'plans',
-    // limit не поддерживается: эндпоинт всегда отдаёт все ~1500 планов (~690 КБ),
-    // поэтому режем на клиенте.
-    paginated: false,
-    readOnly: true,
-  },
-
-  'esim-orders': {
-    path: 'esim/orders',
-    listKey: 'orders',
-    paginated: false,
-    readOnly: true,
-  },
-
   markups: {
     path: 'markups',
     listKey: 'users', // не "markups": строки — это юзеры с effectiveMarkup
