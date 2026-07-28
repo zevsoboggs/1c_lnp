@@ -24,9 +24,10 @@ export const WEBHOOK_EVENTS = [
 // REFUND_APPROVED сюда не входит намеренно: он есть в EventMapping бэкенда,
 // но отсутствует в WEBHOOK_EVENTS — подписка на него вернёт 400.
 
-/** Провайдеры терминалов (enum в POST /v1/terminals). */
+/** Провайдеры терминалов (enum PaymentProvider в POST /v1/terminals). */
 export const TERMINAL_PROVIDERS = [
   'KANYON',
+  'PAYSIDO',
   'ALTYN',
   'IPT_DBS',
   'OVERPAY',
