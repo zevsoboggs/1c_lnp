@@ -57,7 +57,7 @@ export const TransactionList = () => {
     { type: 'divider' },
     r.partnerId && {
       key: 'partner',
-      label: `Показать всё по «${r.partner?.name ?? 'партнёру'}»`,
+      label: `Показать всё по «${r.partnerName ?? r.partner?.name ?? 'партнёру'}»`,
       onClick: () => apply('partnerId', r.partnerId),
     },
     r.status && {
@@ -80,7 +80,7 @@ export const TransactionList = () => {
         { title: 'Статус', value: (r) => r.status },
         { title: 'Сумма, ₽', value: (r) => rub(r.amount) },
         { title: 'Валюта', value: (r) => r.orderCurrency ?? '' },
-        { title: 'Партнёр', value: (r) => r.partner?.name ?? r.partnerId ?? '' },
+        { title: 'Партнёр', value: (r) => r.partnerName ?? r.partner?.name ?? r.partnerId ?? '' },
         { title: 'Инвойс', value: (r) => r.invoice?.invoiceNumber ?? '' },
         { title: 'Провайдер', value: (r) => r.provider ?? '' },
         { title: 'Внешний ID', value: (r) => r.externalOrderId ?? '' },
@@ -169,13 +169,13 @@ export const TransactionList = () => {
           render={(v: number, r: any) => <Text strong>{money(v, r.orderCurrency ?? 'RUB')}</Text>}
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={200}
-          render={(v: string, r: any) => v ?? r.partnerId ?? '—'}
+          render={(v: string, r: any) => v ?? r.partner?.name ?? r.partnerId ?? '—'}
         />
         <Table.Column
-          dataIndex={['invoice', 'invoiceNumber']}
+          dataIndex="invoiceNumber"
           title="Инвойс"
           width={160}
           render={(v: string) => v ?? '—'}

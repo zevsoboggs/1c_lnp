@@ -101,7 +101,7 @@ export const KycVerificationList = () => {
     },
     r.partnerId && {
       key: 'p',
-      label: `Верификации партнёра «${r.partner?.name ?? ''}»`,
+      label: `Верификации партнёра «${r.partnerName ?? r.partner?.name ?? ''}»`,
       onClick: () => apply('partnerId', r.partnerId),
     },
     r.documentNumber && {
@@ -188,10 +188,10 @@ export const KycVerificationList = () => {
           }
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={150}
-          render={(x: string) => x ?? '—'}
+          render={(x: string, r: any) => x ?? r.partner?.name ?? '—'}
         />
         <Table.Column
           dataIndex="documentType"
@@ -290,7 +290,7 @@ export const KycVerificationList = () => {
                 { key: 'fr', label: 'Фрод-скор', children: v.fraudScore ?? '—' },
                 { key: 'aml', label: 'AML', children: v.amlStatus ?? '—' },
                 { key: 'ip', label: 'IP', children: `${v.ipAddress ?? '—'} ${v.ipCountry ?? ''}` },
-                { key: 'p', label: 'Партнёр', children: v.partner?.name ?? '—' },
+                { key: 'p', label: 'Партнёр', children: v.partnerName ?? v.partner?.name ?? '—' },
                 { key: 'c', label: 'Создана', children: dt(v.createdAt) },
                 { key: 'vf', label: 'Проверена', children: dt(v.verifiedAt) },
                 { key: 'ex', label: 'Истекает', children: v.expiresAt ? dt(v.expiresAt) : 'бессрочно' },

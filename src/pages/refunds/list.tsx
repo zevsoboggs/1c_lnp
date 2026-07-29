@@ -93,10 +93,10 @@ export const RefundList = () => {
       label: `Отобрать по статусу «${r.status}»`,
       onClick: () => apply('status', r.status),
     },
-    r.invoice?.invoiceNumber && {
+    (r.invoiceNumber ?? r.invoice?.invoiceNumber) && {
       key: 'inv',
       label: 'Копировать номер счёта',
-      onClick: () => navigator.clipboard.writeText(r.invoice.invoiceNumber),
+      onClick: () => navigator.clipboard.writeText(r.invoiceNumber ?? r.invoice.invoiceNumber),
     },
   ])
 
@@ -107,8 +107,8 @@ export const RefundList = () => {
         { title: 'Создан', value: (r) => (r.createdAt ? dt(r.createdAt) : '') },
         { title: 'Статус', value: (r) => r.status },
         { title: 'Сумма, ₽', value: (r) => rub(r.amount) },
-        { title: 'Инвойс', value: (r) => r.invoice?.invoiceNumber ?? r.invoiceId ?? '' },
-        { title: 'Партнёр', value: (r) => r.partner?.name ?? '' },
+        { title: 'Инвойс', value: (r) => r.invoiceNumber ?? r.invoice?.invoiceNumber ?? r.invoiceId ?? '' },
+        { title: 'Партнёр', value: (r) => r.partnerName ?? r.partner?.name ?? '' },
         { title: 'Причина', value: (r) => r.reason ?? '' },
         { title: 'Ошибка', value: (r) => r.executionError ?? '' },
       ],
@@ -169,16 +169,16 @@ export const RefundList = () => {
           render={(v: number) => <Text strong>{money(v)}</Text>}
         />
         <Table.Column
-          dataIndex={['invoice', 'invoiceNumber']}
+          dataIndex="invoiceNumber"
           title="Инвойс"
           width={170}
-          render={(v: string, r: any) => v ?? r.invoiceId ?? '—'}
+          render={(v: string, r: any) => v ?? r.invoice?.invoiceNumber ?? r.invoiceId ?? '—'}
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={170}
-          render={(v: string) => v ?? '—'}
+          render={(v: string, r: any) => v ?? r.partner?.name ?? '—'}
         />
         <Table.Column dataIndex="reason" title="Причина" ellipsis render={(v: string) => v ?? '—'} />
         <Table.Column

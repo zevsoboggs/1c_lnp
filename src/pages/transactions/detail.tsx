@@ -76,7 +76,7 @@ export function TransactionDetail({
                 span: 2,
                 children: <Typography.Text copyable={!!t.merchantOrderId}>{t.merchantOrderId ?? '—'}</Typography.Text>,
               },
-              { key: 'p', label: 'Партнёр', span: 2, children: t.partner?.name ?? t.partnerId ?? '—' },
+              { key: 'p', label: 'Партнёр', span: 2, children: t.partnerName ?? t.partner?.name ?? t.partnerId ?? '—' },
               {
                 key: 'err',
                 label: 'Ошибка',
@@ -133,7 +133,7 @@ export function TransactionDetail({
             { label: 'Статус', value: TRANSACTION_STATUS.find((s) => s.value === t.status)?.label ?? t.status },
             { label: 'Сумма', value: money(t.amount, t.orderCurrency ?? 'RUB') },
             { label: 'Провайдер', value: t.provider },
-            { label: 'Партнёр', value: t.partner?.name ?? t.partnerId ?? '—' },
+            { label: 'Партнёр', value: t.partnerName ?? t.partner?.name ?? t.partnerId ?? '—' },
             { label: 'Счёт', value: t.invoice?.invoiceNumber ?? '—' },
             { label: 'Внешний ID', value: t.externalOrderId ?? '—', wide: true },
             { label: 'Merchant order', value: t.merchantOrderId ?? '—', wide: true },

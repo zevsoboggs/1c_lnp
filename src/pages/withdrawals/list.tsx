@@ -115,10 +115,10 @@ export const WithdrawalList = () => {
           render={(v: number) => <Text strong>{money(v)}</Text>}
         />
         <Table.Column
-          dataIndex={['requestedBy', 'name']}
+          dataIndex="requestedByEmail"
           title="Кто запросил"
           width={180}
-          render={(v: string, r: any) => v ?? r.requestedBy?.email ?? '—'}
+          render={(v: string, r: any) => v ?? r.requestedBy?.name ?? r.requestedBy?.email ?? '—'}
         />
         <Table.Column
           title="Реквизиты"

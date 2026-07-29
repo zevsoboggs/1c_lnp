@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCustom } from '@refinedev/core'
 import { useMutation } from '@tanstack/react-query'
 import {
@@ -37,12 +37,9 @@ type Row = {
   phone: string | null
   moderationStatus: string
   platformCommission: number | null
+  parentPartnerId: string | null
   createdAt: string
-  rejectionReason: string | null
-  parentPartner: { id: string; name: string; partnerId: string } | null
-  users: Array<{ name: string; email: string; createdBy?: { name: string; email: string } }>
-  providers: any[]
-  _count: { invoices: number }
+  _count?: { invoices?: number; users?: number; subPartners?: number }
 }
 
 const MOD: Record<string, { label: string; color: string }> = {
@@ -54,33 +51,50 @@ const MOD: Record<string, { label: string; color: string }> = {
 export const PartnerModerationPage = () => {
   const { message } = App.useApp()
   const [form] = Form.useForm()
-  const [status, setStatus] = useState('pending')
+  const [status, setStatus] = useState<'pending' | 'rejected' | 'all'>('pending')
   const [activating, setActivating] = useState<Row | null>(null)
   const [rejecting, setRejecting] = useState<Row | null>(null)
   const [reason, setReason] = useState('')
   const [provider, setProvider] = useState('KANYON')
   const [direct, setDirect] = useState(true)
 
-  const { query, result } = useCustom<{ partners: Row[]; count: number }>({
-    url: '/partner-moderation',
+  // В новом API отдельного /partner-moderation нет: берём партнёров и фильтруем
+  // по moderationStatus. Модерация одобряется/отклоняется через PATCH /partners.
+  const { query, result } = useCustom<{ partners: Row[] }>({
+    url: '/partners',
     method: 'get',
-    config: { query: { status } },
+    config: { query: { limit: 200 } },
   })
 
-  const rows = result.data?.partners ?? []
+  const allRows = result.data?.partners ?? []
+  const rows = useMemo(() => {
+    if (status === 'all') return allRows
+    const want = status === 'pending' ? 'PENDING' : 'REJECTED'
+    return allRows.filter((r) => r.moderationStatus === want)
+  }, [allRows, status])
 
   const activate = useMutation({
     mutationFn: async () => {
       const v = await form.validateFields()
       const kanyonDirect = provider === 'KANYON' && direct
-      return action(`/partner-moderation/${activating!.id}/activate`, {
-        body: {
-          provider,
-          merchantId: v.merchantId,
-          platformCommission: Number(v.platformCommission),
-          // KANYON принимается только прямым API — с числовым tspId.
-          ...(kanyonDirect ? { config: { mode: 'direct', tspId: Number(v.tspId) } } : {}),
-        },
+      // 1. Терминал (если указан merchantId) — чтобы партнёр мог принимать платежи.
+      if (v.merchantId) {
+        await action('/terminals', {
+          method: 'POST',
+          body: {
+            partnerId: activating!.id,
+            provider,
+            merchantId: v.merchantId,
+            isActive: true,
+            isDefault: true,
+            ...(kanyonDirect ? { config: { mode: 'direct', tspId: Number(v.tspId) } } : {}),
+          },
+        })
+      }
+      // 2. Одобряем модерацию и ставим комиссию.
+      return action(`/partners/${activating!.id}`, {
+        method: 'PATCH',
+        body: { moderationStatus: 'APPROVED', platformCommission: Number(v.platformCommission) },
       })
     },
     onSuccess: () => {
@@ -94,8 +108,9 @@ export const PartnerModerationPage = () => {
 
   const reject = useMutation({
     mutationFn: () =>
-      action(`/partner-moderation/${rejecting!.id}/activate`, {
-        body: { action: 'reject', rejectionReason: reason || undefined },
+      action(`/partners/${rejecting!.id}`, {
+        method: 'PATCH',
+        body: { moderationStatus: 'REJECTED', rejectionReason: reason || undefined },
       }),
     onSuccess: () => {
       setRejecting(null)
@@ -141,13 +156,13 @@ export const PartnerModerationPage = () => {
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
       {menu}
-      <Card title="Модерация подпартнёров" size="small">
+      <Card title="Модерация партнёров" size="small">
         <Space wrap align="end" size={12}>
           <Field label="Показывать">
             <Select
               style={{ width: 200 }}
               value={status}
-              onChange={setStatus}
+              onChange={(v) => setStatus(v)}
               options={[
                 { value: 'pending', label: 'На модерации' },
                 { value: 'rejected', label: 'Отклонённые' },
@@ -159,7 +174,7 @@ export const PartnerModerationPage = () => {
       </Card>
 
       <Card size="small">
-        <Toolbar total={result.data?.count} loading={query.isFetching} onRefresh={() => query.refetch()} />
+        <Toolbar total={rows.length} loading={query.isFetching} onRefresh={() => query.refetch()} />
 
         <Table
           dataSource={rows}
@@ -167,13 +182,13 @@ export const PartnerModerationPage = () => {
           rowKey="id"
           size="small"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1150 }}
+          scroll={{ x: 980 }}
           onRow={onRow}
         >
           <Table.Column
             dataIndex="name"
             title="Партнёр"
-            width={170}
+            width={180}
             fixed="left"
             render={(v: string) => <Text strong>{v}</Text>}
           />
@@ -184,35 +199,26 @@ export const PartnerModerationPage = () => {
             render={(v: string) => <Tag color={MOD[v]?.color}>{MOD[v]?.label ?? v}</Tag>}
           />
           <Table.Column
-            dataIndex={['parentPartner', 'name']}
-            title="Родитель"
-            width={160}
-            render={(v: string) => v ?? <Text type="secondary">корневой</Text>}
-          />
-          <Table.Column dataIndex="email" title="Email" width={210} />
-          <Table.Column
-            title="Кто пригласил"
-            width={180}
-            render={(_: unknown, r: Row) => {
-              const by = r.users?.[0]?.createdBy
-              return by ? (
-                <Space direction="vertical" size={0}>
-                  <Text style={{ fontSize: 12 }}>{by.name}</Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {by.email}
-                  </Text>
-                </Space>
-              ) : (
-                '—'
-              )
-            }}
-          />
-          <Table.Column
-            title="Терминалы"
-            width={110}
-            render={(_: unknown, r: Row) =>
-              r.providers?.length ? <Tag color="blue">{r.providers.length}</Tag> : <Tag>нет</Tag>
+            dataIndex="parentPartnerId"
+            title="Тип"
+            width={130}
+            render={(v: string) =>
+              v ? <Tag>подпартнёр</Tag> : <Text type="secondary">корневой</Text>
             }
+          />
+          <Table.Column dataIndex="email" title="Email" width={220} />
+          <Table.Column
+            dataIndex="phone"
+            title="Телефон"
+            width={150}
+            render={(v: string) => v || <Text type="secondary">—</Text>}
+          />
+          <Table.Column
+            dataIndex="platformCommission"
+            title="Комиссия"
+            width={110}
+            align="right"
+            render={(v: number) => (v != null ? `${v}%` : '—')}
           />
           <Table.Column
             title="Счетов"
@@ -220,13 +226,7 @@ export const PartnerModerationPage = () => {
             align="right"
             render={(_: unknown, r: Row) => r._count?.invoices ?? 0}
           />
-          <Table.Column dataIndex="createdAt" title="Заявка" width={140} render={(v: string) => dt(v)} />
-          <Table.Column
-            dataIndex="rejectionReason"
-            title="Причина отказа"
-            ellipsis
-            render={(v: string) => (v ? <Text type="danger">{v}</Text> : '—')}
-          />
+          <Table.Column dataIndex="createdAt" title="Создан" width={140} render={(v: string) => dt(v)} />
           <Table.Column
             title="Действия"
             width={110}
@@ -286,12 +286,11 @@ export const PartnerModerationPage = () => {
             column={1}
             bordered
             items={[
-              { key: 'p', label: 'Родитель', children: activating?.parentPartner?.name ?? 'корневой' },
               { key: 'e', label: 'Email', children: activating?.email ?? '—' },
               {
-                key: 'i',
-                label: 'Пригласил',
-                children: activating?.users?.[0]?.createdBy?.name ?? '—',
+                key: 'p',
+                label: 'Тип',
+                children: activating?.parentPartnerId ? 'подпартнёр' : 'корневой',
               },
             ]}
           />
@@ -299,11 +298,11 @@ export const PartnerModerationPage = () => {
           <Alert
             type="info"
             showIcon
-            message="Партнёру назначается терминал и комиссия — после этого он сможет принимать платежи."
+            message="Партнёр будет одобрен с указанной комиссией. Если заполнить merchantId — сразу создастся терминал, и партнёр сможет принимать платежи. Иначе терминал добавьте позже в разделе «Терминалы»."
           />
 
           <Form form={form} layout="vertical" size="small">
-            <Form.Item label="Провайдер" required>
+            <Form.Item label="Провайдер терминала">
               <Select value={provider} onChange={setProvider} options={options(TERMINAL_PROVIDERS)} />
             </Form.Item>
 
@@ -321,10 +320,9 @@ export const PartnerModerationPage = () => {
                 name="tspId"
                 label="config.tspId"
                 rules={[
-                  { required: true, message: 'Для прямого KANYON нужен tspId' },
                   {
                     validator: (_, v) =>
-                      v == null || Number(v) > 0
+                      v == null || v === '' || Number(v) > 0
                         ? Promise.resolve()
                         : Promise.reject(new Error('tspId должен быть числом больше нуля')),
                   },
@@ -336,8 +334,8 @@ export const PartnerModerationPage = () => {
 
             <Form.Item
               name="merchantId"
-              label={kanyonDirect ? 'Имя терминала (merchantId)' : 'Merchant ID'}
-              rules={[{ required: kanyonDirect, message: 'Для KANYON имя терминала обязательно' }]}
+              label="Merchant ID терминала (необязательно)"
+              extra="Оставьте пустым, чтобы только одобрить партнёра без терминала"
             >
               <Input />
             </Form.Item>
@@ -356,7 +354,7 @@ export const PartnerModerationPage = () => {
       <DangerConfirm
         open={!!rejecting}
         title="Отклонить партнёра?"
-        what={`«${rejecting?.name}» не сможет принимать платежи. Заявку подал ${rejecting?.users?.[0]?.createdBy?.name ?? 'неизвестно кто'}.`}
+        what={`«${rejecting?.name}» не сможет принимать платежи.`}
         okText="Отклонить"
         loading={reject.isPending}
         onOk={() => reject.mutate()}

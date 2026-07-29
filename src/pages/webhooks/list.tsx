@@ -155,10 +155,10 @@ export const WebhookList = () => {
           render={(v: string) => <Text copyable={!!v}>{v}</Text>}
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={170}
-          render={(v: string, r: any) => v ?? r.partnerId ?? '—'}
+          render={(v: string, r: any) => v ?? r.partner?.name ?? r.partnerId ?? '—'}
         />
         <Table.Column
           dataIndex="events"

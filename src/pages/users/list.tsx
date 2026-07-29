@@ -68,7 +68,7 @@ export const UserList = () => {
     },
     r.partnerId && {
       key: 'partner',
-      label: `Показать юзеров партнёра «${r.partner?.name ?? ''}»`,
+      label: `Показать юзеров партнёра «${r.partnerName ?? r.partner?.name ?? ''}»`,
       onClick: () => apply('partnerId', r.partnerId),
     },
   ])
@@ -145,10 +145,10 @@ export const UserList = () => {
           render={(v: string) => <StatusTag list={USER_ROLE} value={v} />}
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={200}
-          render={(v: string) => v ?? '—'}
+          render={(v: string, r: any) => v ?? r.partner?.name ?? '—'}
         />
         <Table.Column
           dataIndex="isActive"

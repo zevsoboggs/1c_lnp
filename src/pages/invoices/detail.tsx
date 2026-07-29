@@ -118,7 +118,7 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
               { key: 'c', label: 'Создан', children: dt(inv.createdAt) },
               { key: 'pd', label: 'Оплачен', children: dt(inv.paidAt) },
               { key: 'exp', label: 'Истекает', children: dt(inv.expiresAt) },
-              { key: 'p', label: 'Партнёр', children: inv.partner?.name ?? inv.partnerId ?? '—' },
+              { key: 'p', label: 'Партнёр', children: inv.partnerName ?? inv.partner?.name ?? inv.partnerId ?? '—' },
               { key: 'cn', label: 'Клиент', children: inv.customerName ?? '—' },
               { key: 'ce', label: 'Email', children: inv.customerEmail ?? '—' },
               { key: 'cp', label: 'Телефон', children: inv.customerPhone ?? '—' },
@@ -182,7 +182,7 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
           fields={[
             { label: 'Статус', value: INVOICE_STATUS.find((s) => s.value === inv.status)?.label ?? inv.status },
             { label: 'Сумма', value: money(inv.amount, inv.currency ?? 'RUB') },
-            { label: 'Партнёр', value: inv.partner?.name ?? '—' },
+            { label: 'Партнёр', value: inv.partnerName ?? inv.partner?.name ?? '—' },
             ...(payer
               ? [{ label: 'Плательщик', value: [payer.name, payer.phone].filter(Boolean).join(' · '), wide: true }]
               : []),

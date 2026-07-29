@@ -75,7 +75,7 @@ export const TerminalList = () => {
     { type: 'divider' },
     r.partnerId && {
       key: 'partner',
-      label: `Терминалы партнёра «${r.partner?.name ?? ''}»`,
+      label: `Терминалы партнёра «${r.partnerName ?? r.partner?.name ?? ''}»`,
       onClick: () => apply('partnerId', r.partnerId),
     },
     r.provider && {
@@ -147,10 +147,10 @@ export const TerminalList = () => {
           render={(v: string) => <Text copyable={!!v}>{v ?? '—'}</Text>}
         />
         <Table.Column
-          dataIndex={['partner', 'name']}
+          dataIndex="partnerName"
           title="Партнёр"
           width={200}
-          render={(v: string, r: any) => v ?? r.partnerId ?? '—'}
+          render={(v: string, r: any) => v ?? r.partner?.name ?? r.partnerId ?? '—'}
         />
         {/* У KANYON в config лежит tspId — он же код терминала на стороне провайдера. */}
         <Table.Column
@@ -184,10 +184,10 @@ export const TerminalList = () => {
         />
         <Table.Column dataIndex="priority" title="Приоритет" width={100} align="right" />
         <Table.Column
-          dataIndex={['user', 'email']}
+          dataIndex="userEmail"
           title="Пользователь"
           width={200}
-          render={(v: string) => v ?? '—'}
+          render={(v: string, r: any) => v ?? r.user?.email ?? '—'}
         />
         <Table.Column dataIndex="createdAt" title="Создан" width={150} render={(v: string) => dt(v)} />
         <Table.Column
@@ -231,8 +231,8 @@ export const TerminalList = () => {
         title="Удалить терминал?"
         what={
           removing?.isDefault
-            ? `Это терминал по умолчанию для «${removing?.partner?.name}». После удаления роль перейдёт к следующему по приоритету, а если других терминалов нет — партнёр останется без рабочего провайдера и его платежи перестанут проходить.`
-            : `Терминал ${removing?.provider} у «${removing?.partner?.name}» будет удалён. Платежи через него перестанут идти.`
+            ? `Это терминал по умолчанию для «${removing?.partnerName ?? removing?.partner?.name}». После удаления роль перейдёт к следующему по приоритету, а если других терминалов нет — партнёр останется без рабочего провайдера и его платежи перестанут проходить.`
+            : `Терминал ${removing?.provider} у «${removing?.partnerName ?? removing?.partner?.name}» будет удалён. Платежи через него перестанут идти.`
         }
         confirmWord={removing?.isDefault ? 'УДАЛИТЬ' : undefined}
         okText="Удалить"

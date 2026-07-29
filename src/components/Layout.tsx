@@ -4,7 +4,6 @@ import type { TreeMenuItem } from '@refinedev/core'
 import { Link } from 'react-router'
 import type { ReactNode } from 'react'
 import { Brand } from './Brand'
-import { HealthBadge } from './HealthBadge'
 import { UserMenu } from './UserMenu'
 import { TabsBar } from './TabsBar'
 import { getMe } from '../api/authProvider'
@@ -84,10 +83,7 @@ export function Layout({ children }: { children: ReactNode }) {
           style={{ background: 'transparent', borderInlineEnd: 'none', flex: 1, paddingTop: 4 }}
           items={visibleMenu(menuItems).map(toMenuItem)}
         />
-        <div>
-          <div style={{ borderTop: `1px solid ${C1.sidebarBorder}` }}>
-            <HealthBadge />
-          </div>
+        <div style={{ borderTop: `1px solid ${C1.sidebarBorder}` }}>
           <UserMenu />
         </div>
       </AntLayout.Sider>
