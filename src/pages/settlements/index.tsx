@@ -7,7 +7,7 @@ import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
-import { useAllPartners } from '../../api/usePartners'
+import { useAllPartners, useAllUsers } from '../../api/usePartners'
 import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
 
 const { Text } = Typography
@@ -64,6 +64,7 @@ export const SettlementsPage = () => {
   })
 
   const allPartners = useAllPartners()
+  const allUsers = useAllUsers(!!emailSearch.trim())
   const s = result.data?.stats
   const from = range[0].format('YYYY-MM-DD')
   const to = range[1].format('YYYY-MM-DD')
@@ -100,9 +101,19 @@ export const SettlementsPage = () => {
         : merged
     }
     const q = emailSearch.trim().toLowerCase()
-    if (q) base = base.filter((r) => (r.email ?? '').toLowerCase().includes(q))
+    if (q) {
+      const hitPartners = new Set(
+        allUsers.list
+          .filter((u) => (u.email ?? '').toLowerCase().includes(q))
+          .map((u) => u.partnerId)
+          .filter(Boolean) as string[],
+      )
+      base = base.filter(
+        (r) => (r.email ?? '').toLowerCase().includes(q) || hitPartners.has(r.partnerId),
+      )
+    }
     return base
-  }, [result.data, allPartners.list, partnerId, scope, emailSearch])
+  }, [result.data, allPartners.list, allUsers.list, partnerId, scope, emailSearch])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     { key: 'only', label: `Только «${r.name}»`, onClick: () => setPartnerId(r.partnerId) },
@@ -133,7 +144,7 @@ export const SettlementsPage = () => {
           <Field label="Поиск по почте">
             <Input.Search
               allowClear
-              placeholder="account@mail.com"
+              placeholder="почта любого аккаунта"
               style={{ width: 240 }}
               value={emailSearch}
               onChange={(e) => setEmailSearch(e.target.value)}
@@ -187,6 +198,17 @@ export const SettlementsPage = () => {
           Итоговые суммы вверху — по партнёрам с оборотом.
         </Text>
       </Card>
+
+      {partnerId && (
+        <Card
+          size="small"
+          title={`Обороты по аккаунтам${
+            allPartners.byId.get(partnerId)?.name ? ` · ${allPartners.byId.get(partnerId)?.name}` : ''
+          }`}
+        >
+          <PartnerTurnoverByUser partnerId={partnerId} from={from} to={to} mode="usdt" />
+        </Card>
+      )}
 
       <Card size="small">
         <Toolbar

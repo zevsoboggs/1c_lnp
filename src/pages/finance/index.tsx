@@ -7,7 +7,7 @@ import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
-import { useAllPartners } from '../../api/usePartners'
+import { useAllPartners, useAllUsers } from '../../api/usePartners'
 import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
 
 const { Text } = Typography
@@ -77,6 +77,7 @@ export const FinancePage = () => {
   })
 
   const allPartners = useAllPartners()
+  const allUsers = useAllUsers(!!emailSearch.trim())
   const s = result.data?.stats
   const from = range[0].format('YYYY-MM-DD')
   const to = range[1].format('YYYY-MM-DD')
@@ -109,11 +110,22 @@ export const FinancePage = () => {
         : scope === 'sub' ? merged.filter((r) => r.parentPartnerId)
         : merged
     }
-    // Поиск по почте: оператор вводит адрес — остаются строки этого аккаунта.
+    // Поиск по почте: совпадение по почте владельца ИЛИ любого пользователя
+    // партнёра (тогда оператор находит партнёра по почте суб-аккаунта).
     const q = emailSearch.trim().toLowerCase()
-    if (q) base = base.filter((r) => (r.email ?? '').toLowerCase().includes(q))
+    if (q) {
+      const hitPartners = new Set(
+        allUsers.list
+          .filter((u) => (u.email ?? '').toLowerCase().includes(q))
+          .map((u) => u.partnerId)
+          .filter(Boolean) as string[],
+      )
+      base = base.filter(
+        (r) => (r.email ?? '').toLowerCase().includes(q) || hitPartners.has(r.partnerId),
+      )
+    }
     return base
-  }, [result.data, allPartners.list, partnerId, scope, emailSearch])
+  }, [result.data, allPartners.list, allUsers.list, partnerId, scope, emailSearch])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     {
@@ -154,7 +166,7 @@ export const FinancePage = () => {
           <Field label="Поиск по почте">
             <Input.Search
               allowClear
-              placeholder="account@mail.com"
+              placeholder="почта любого аккаунта"
               style={{ width: 240 }}
               value={emailSearch}
               onChange={(e) => setEmailSearch(e.target.value)}
@@ -210,6 +222,17 @@ export const FinancePage = () => {
           <Statistic title="Активных партнёров" value={s?.activePartners ?? 0} />
         </Space>
       </Card>
+
+      {partnerId && (
+        <Card
+          size="small"
+          title={`Обороты по аккаунтам${
+            allPartners.byId.get(partnerId)?.name ? ` · ${allPartners.byId.get(partnerId)?.name}` : ''
+          }`}
+        >
+          <PartnerTurnoverByUser partnerId={partnerId} from={from} to={to} mode="rub" />
+        </Card>
+      )}
 
       <Card size="small">
         <Toolbar
