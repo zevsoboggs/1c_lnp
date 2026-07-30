@@ -94,6 +94,7 @@ export const FinancePage = () => {
         partnerId: p.id,
         partnerStringId: p.partnerId,
         name: p.name,
+        email: a?.email ?? p.email ?? '',
         isActive: p.isActive,
         parentPartnerId: p.parentPartnerId,
         parentName: allPartners.nameOf(p.parentPartnerId),
@@ -204,7 +205,7 @@ export const FinancePage = () => {
           rowKey="partnerId"
           size="small"
           pagination={{ pageSize: 30 }}
-          scroll={{ x: 1150 }}
+          scroll={{ x: 1530 }}
           onRow={onRow}
           summary={(data) => {
             const t = (data as Row[]).reduce(
@@ -222,22 +223,23 @@ export const FinancePage = () => {
                 <Table.Summary.Row style={{ background: '#eaf2fd', fontWeight: 600 }}>
                   <Table.Summary.Cell index={0}>Итого на странице</Table.Summary.Cell>
                   <Table.Summary.Cell index={1} />
-                  <Table.Summary.Cell index={2} align="right">
+                  <Table.Summary.Cell index={2} />
+                  <Table.Summary.Cell index={3} align="right">
                     {money(t.gross)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3} align="right">
+                  <Table.Summary.Cell index={4} align="right">
                     {t.refunded ? money(t.refunded) : '—'}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={4} align="right">
+                  <Table.Summary.Cell index={5} align="right">
                     {money(t.commission)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5} align="right">
+                  <Table.Summary.Cell index={6} align="right">
                     {money(t.revenue)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6} align="right">
+                  <Table.Summary.Cell index={7} align="right">
                     {t.count}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={7} />
+                  <Table.Summary.Cell index={8} />
                 </Table.Summary.Row>
               </Table.Summary>
             )
@@ -265,6 +267,12 @@ export const FinancePage = () => {
                 <Text type="secondary">—</Text>
               )
             }
+          />
+          <Table.Column
+            dataIndex="email"
+            title="Аккаунт (почта)"
+            width={220}
+            render={(v: string) => (v ? <Text copyable>{v}</Text> : <Text type="secondary">—</Text>)}
           />
           <Table.Column
             dataIndex="grossInvoiceAmount"

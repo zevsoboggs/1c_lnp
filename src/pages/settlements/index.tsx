@@ -15,6 +15,7 @@ type Row = {
   partnerId: string
   partnerStringId: string
   name: string
+  email?: string | null
   totalUsdt: number
   grossUsdt: number
   refundedUsdt: number
@@ -68,7 +69,11 @@ export const SettlementsPage = () => {
   const rows = useMemo(() => {
     const agg = result.data?.partners ?? []
     if (partnerId) {
-      return agg.map((r) => ({ ...r, parentName: allPartners.nameOf(r.parentPartnerId) }))
+      return agg.map((r) => ({
+        ...r,
+        email: r.email ?? allPartners.byId.get(r.partnerId)?.email ?? '',
+        parentName: allPartners.nameOf(r.parentPartnerId),
+      }))
     }
     const aggById = new Map(agg.map((r) => [r.partnerId, r]))
     const merged: Row[] = allPartners.list.map((p) => {
@@ -79,6 +84,7 @@ export const SettlementsPage = () => {
         partnerId: p.id,
         partnerStringId: p.partnerId,
         name: p.name,
+        email: a?.email ?? p.email ?? '',
         isActive: p.isActive,
         parentPartnerId: p.parentPartnerId,
         parentName: allPartners.nameOf(p.parentPartnerId),
@@ -176,7 +182,7 @@ export const SettlementsPage = () => {
           rowKey="partnerId"
           size="small"
           pagination={{ pageSize: 30 }}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 1300 }}
           onRow={onRow}
         >
           <Table.Column
@@ -200,6 +206,12 @@ export const SettlementsPage = () => {
                 <Text type="secondary">—</Text>
               )
             }
+          />
+          <Table.Column
+            dataIndex="email"
+            title="Аккаунт (почта)"
+            width={220}
+            render={(v: string) => (v ? <Text copyable>{v}</Text> : <Text type="secondary">—</Text>)}
           />
           <Table.Column
             dataIndex="grossUsdt"

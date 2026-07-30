@@ -4,6 +4,7 @@ export type PartnerLite = {
   id: string
   partnerId: string // человекочитаемый код (partner-…)
   name: string
+  email: string | null
   parentPartnerId: string | null
   isActive: boolean
 }
