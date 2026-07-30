@@ -1,7 +1,8 @@
 import { List, useTable } from '@refinedev/antd'
 import { keepPreviousData } from '@tanstack/react-query'
-import { Table, Select, Space, Card, Input, Typography } from 'antd'
+import { Table, Select, Space, Card, Input, Typography, DatePicker } from 'antd'
 import type { CrudFilters } from '@refinedev/core'
+import dayjs from 'dayjs'
 import { dt, money } from '../../lib/format'
 import { INVOICE_STATUS, selectOptions } from '../../lib/enums'
 import { StatusTag } from '../../components/StatusTag'
@@ -49,6 +50,31 @@ export const InvoiceList = () => {
 
   const apply = (field: string, value: unknown) =>
     setFilters([{ field, operator: 'eq', value }], 'merge')
+
+  // Пресет и свой период взаимоисключающи: выбрал одно — второе сбрасываем.
+  const applyPreset = (value: unknown) =>
+    setFilters(
+      [
+        { field: 'period', operator: 'eq', value },
+        { field: 'dateFrom', operator: 'eq', value: undefined },
+        { field: 'dateTo', operator: 'eq', value: undefined },
+      ],
+      'merge',
+    )
+
+  const applyRange = (from?: string, to?: string) =>
+    setFilters(
+      [
+        { field: 'dateFrom', operator: 'eq', value: from },
+        { field: 'dateTo', operator: 'eq', value: to },
+        // Свой период задан — пресет убираем, иначе API возьмёт его.
+        { field: 'period', operator: 'eq', value: from ? undefined : 'week' },
+      ],
+      'merge',
+    )
+
+  const dateFrom = valueOf('dateFrom') as string | undefined
+  const dateTo = valueOf('dateTo') as string | undefined
 
   const { onRow, menu } = useRowMenu<any>((r) => [
     { key: 'open', label: 'Открыть детали', onClick: () => setDetailId(r.id) },
@@ -127,8 +153,22 @@ export const InvoiceList = () => {
             <Select
               style={{ width: 150 }}
               options={PERIODS}
-              value={valueOf('period') as string}
-              onChange={(v) => apply('period', v)}
+              placeholder="Пресет"
+              allowClear
+              value={dateFrom ? undefined : (valueOf('period') as string)}
+              onChange={(v) => applyPreset(v ?? 'all')}
+            />
+          </Field>
+          <Field label="Свой период">
+            <DatePicker.RangePicker
+              format="DD.MM.YYYY"
+              style={{ width: 240 }}
+              value={dateFrom && dateTo ? [dayjs(dateFrom), dayjs(dateTo)] : null}
+              onChange={(v) =>
+                v?.[0] && v?.[1]
+                  ? applyRange(v[0].format('YYYY-MM-DD'), v[1].format('YYYY-MM-DD'))
+                  : applyRange(undefined, undefined)
+              }
             />
           </Field>
         </Space>
