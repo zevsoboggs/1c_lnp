@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useCustom } from '@refinedev/core'
-import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag, Segmented } from 'antd'
+import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag, Segmented, Input } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { usdt } from '../../lib/format'
 import { PartnerSelect } from '../../components/PartnerSelect'
@@ -47,6 +47,7 @@ type Stats = {
 export const SettlementsPage = () => {
   const [partnerId, setPartnerId] = useState<string>()
   const [scope, setScope] = useState<'all' | 'root' | 'sub'>('all')
+  const [emailSearch, setEmailSearch] = useState('')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(30, 'day'), dayjs()])
 
   const { query, result } = useCustom<{ partners: Row[]; stats: Stats }>({
@@ -68,32 +69,37 @@ export const SettlementsPage = () => {
   // были ВСЕ, включая подпартнёров и тех, у кого нет счетов за период (нули).
   const rows = useMemo(() => {
     const agg = result.data?.partners ?? []
+    let base: Row[]
     if (partnerId) {
-      return agg.map((r) => ({
+      base = agg.map((r) => ({
         ...r,
         email: r.email ?? allPartners.byId.get(r.partnerId)?.email ?? '',
         parentName: allPartners.nameOf(r.parentPartnerId),
       }))
+    } else {
+      const aggById = new Map(agg.map((r) => [r.partnerId, r]))
+      const merged: Row[] = allPartners.list.map((p) => {
+        const a = aggById.get(p.id)
+        return {
+          ...ZERO,
+          ...(a ?? {}),
+          partnerId: p.id,
+          partnerStringId: p.partnerId,
+          name: p.name,
+          email: a?.email ?? p.email ?? '',
+          isActive: p.isActive,
+          parentPartnerId: p.parentPartnerId,
+          parentName: allPartners.nameOf(p.parentPartnerId),
+        }
+      })
+      base = scope === 'root' ? merged.filter((r) => !r.parentPartnerId)
+        : scope === 'sub' ? merged.filter((r) => r.parentPartnerId)
+        : merged
     }
-    const aggById = new Map(agg.map((r) => [r.partnerId, r]))
-    const merged: Row[] = allPartners.list.map((p) => {
-      const a = aggById.get(p.id)
-      return {
-        ...ZERO,
-        ...(a ?? {}),
-        partnerId: p.id,
-        partnerStringId: p.partnerId,
-        name: p.name,
-        email: a?.email ?? p.email ?? '',
-        isActive: p.isActive,
-        parentPartnerId: p.parentPartnerId,
-        parentName: allPartners.nameOf(p.parentPartnerId),
-      }
-    })
-    if (scope === 'root') return merged.filter((r) => !r.parentPartnerId)
-    if (scope === 'sub') return merged.filter((r) => r.parentPartnerId)
-    return merged
-  }, [result.data, allPartners.list, partnerId, scope])
+    const q = emailSearch.trim().toLowerCase()
+    if (q) base = base.filter((r) => (r.email ?? '').toLowerCase().includes(q))
+    return base
+  }, [result.data, allPartners.list, partnerId, scope, emailSearch])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     { key: 'only', label: `Только «${r.name}»`, onClick: () => setPartnerId(r.partnerId) },
@@ -120,6 +126,15 @@ export const SettlementsPage = () => {
           </Field>
           <Field label="Партнёр">
             <PartnerSelect value={partnerId} onChange={setPartnerId} />
+          </Field>
+          <Field label="Поиск по почте">
+            <Input.Search
+              allowClear
+              placeholder="account@mail.com"
+              style={{ width: 240 }}
+              value={emailSearch}
+              onChange={(e) => setEmailSearch(e.target.value)}
+            />
           </Field>
           {!partnerId && (
             <Field label="Показывать">
