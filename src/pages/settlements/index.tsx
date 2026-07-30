@@ -8,6 +8,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAllPartners } from '../../api/usePartners'
+import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
 
 const { Text } = Typography
 
@@ -64,6 +65,8 @@ export const SettlementsPage = () => {
 
   const allPartners = useAllPartners()
   const s = result.data?.stats
+  const from = range[0].format('YYYY-MM-DD')
+  const to = range[1].format('YYYY-MM-DD')
 
   // Без фильтра по партнёру сшиваем расчёты с полным списком партнёров, чтобы
   // были ВСЕ, включая подпартнёров и тех, у кого нет счетов за период (нули).
@@ -199,6 +202,12 @@ export const SettlementsPage = () => {
           pagination={{ pageSize: 30 }}
           scroll={{ x: 1300 }}
           onRow={onRow}
+          expandable={{
+            rowExpandable: (r) => (r.invoiceCount ?? 0) > 0,
+            expandedRowRender: (r) => (
+              <PartnerTurnoverByUser partnerId={r.partnerId} from={from} to={to} mode="usdt" />
+            ),
+          }}
         >
           <Table.Column
             title="Партнёр"

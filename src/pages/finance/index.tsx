@@ -8,6 +8,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAllPartners } from '../../api/usePartners'
+import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
 
 const { Text } = Typography
 
@@ -77,6 +78,8 @@ export const FinancePage = () => {
 
   const allPartners = useAllPartners()
   const s = result.data?.stats
+  const from = range[0].format('YYYY-MM-DD')
+  const to = range[1].format('YYYY-MM-DD')
 
   // По одному партнёру показываем ровно ответ API. Без фильтра — сшиваем с полным
   // списком партнёров, чтобы были ВСЕ, включая подпартнёров и тех, у кого за
@@ -223,6 +226,12 @@ export const FinancePage = () => {
           pagination={{ pageSize: 30 }}
           scroll={{ x: 1530 }}
           onRow={onRow}
+          expandable={{
+            rowExpandable: (r) => (r.invoiceCount ?? 0) > 0,
+            expandedRowRender: (r) => (
+              <PartnerTurnoverByUser partnerId={r.partnerId} from={from} to={to} mode="rub" />
+            ),
+          }}
           summary={(data) => {
             const t = (data as Row[]).reduce(
               (a, r) => ({
@@ -237,25 +246,27 @@ export const FinancePage = () => {
             return (
               <Table.Summary fixed>
                 <Table.Summary.Row style={{ background: '#eaf2fd', fontWeight: 600 }}>
-                  <Table.Summary.Cell index={0}>Итого на странице</Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} />
+                  {/* index 0 — колонка-раскрытие (expandable), под ней пусто. */}
+                  <Table.Summary.Cell index={0} />
+                  <Table.Summary.Cell index={1}>Итого на странице</Table.Summary.Cell>
                   <Table.Summary.Cell index={2} />
-                  <Table.Summary.Cell index={3} align="right">
+                  <Table.Summary.Cell index={3} />
+                  <Table.Summary.Cell index={4} align="right">
                     {money(t.gross)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={4} align="right">
+                  <Table.Summary.Cell index={5} align="right">
                     {t.refunded ? money(t.refunded) : '—'}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5} align="right">
+                  <Table.Summary.Cell index={6} align="right">
                     {money(t.commission)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6} align="right">
+                  <Table.Summary.Cell index={7} align="right">
                     {money(t.revenue)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={7} align="right">
+                  <Table.Summary.Cell index={8} align="right">
                     {t.count}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={8} />
+                  <Table.Summary.Cell index={9} />
                 </Table.Summary.Row>
               </Table.Summary>
             )
