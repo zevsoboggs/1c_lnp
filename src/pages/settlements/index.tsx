@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCustom } from '@refinedev/core'
-import { Card, Table, Space, Statistic, Typography, DatePicker, Divider } from 'antd'
+import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag, Segmented } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { usdt } from '../../lib/format'
 import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
+import { useAllPartners } from '../../api/usePartners'
 
 const { Text } = Typography
 
@@ -21,6 +22,19 @@ type Row = {
   markupAmount: number
   amountOwed: number
   invoiceCount: number
+  isActive?: boolean
+  parentPartnerId?: string | null
+  parentName?: string | null
+}
+
+const ZERO = {
+  totalUsdt: 0,
+  grossUsdt: 0,
+  refundedUsdt: 0,
+  markupPercent: 0,
+  markupAmount: 0,
+  amountOwed: 0,
+  invoiceCount: 0,
 }
 type Stats = {
   totalUsdt: number
@@ -31,6 +45,7 @@ type Stats = {
 
 export const SettlementsPage = () => {
   const [partnerId, setPartnerId] = useState<string>()
+  const [scope, setScope] = useState<'all' | 'root' | 'sub'>('all')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(30, 'day'), dayjs()])
 
   const { query, result } = useCustom<{ partners: Row[]; stats: Stats }>({
@@ -45,8 +60,34 @@ export const SettlementsPage = () => {
     },
   })
 
-  const rows = result.data?.partners ?? []
+  const allPartners = useAllPartners()
   const s = result.data?.stats
+
+  // Без фильтра по партнёру сшиваем расчёты с полным списком партнёров, чтобы
+  // были ВСЕ, включая подпартнёров и тех, у кого нет счетов за период (нули).
+  const rows = useMemo(() => {
+    const agg = result.data?.partners ?? []
+    if (partnerId) {
+      return agg.map((r) => ({ ...r, parentName: allPartners.nameOf(r.parentPartnerId) }))
+    }
+    const aggById = new Map(agg.map((r) => [r.partnerId, r]))
+    const merged: Row[] = allPartners.list.map((p) => {
+      const a = aggById.get(p.id)
+      return {
+        ...ZERO,
+        ...(a ?? {}),
+        partnerId: p.id,
+        partnerStringId: p.partnerId,
+        name: p.name,
+        isActive: p.isActive,
+        parentPartnerId: p.parentPartnerId,
+        parentName: allPartners.nameOf(p.parentPartnerId),
+      }
+    })
+    if (scope === 'root') return merged.filter((r) => !r.parentPartnerId)
+    if (scope === 'sub') return merged.filter((r) => r.parentPartnerId)
+    return merged
+  }, [result.data, allPartners.list, partnerId, scope])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     { key: 'only', label: `Только «${r.name}»`, onClick: () => setPartnerId(r.partnerId) },
@@ -74,6 +115,19 @@ export const SettlementsPage = () => {
           <Field label="Партнёр">
             <PartnerSelect value={partnerId} onChange={setPartnerId} />
           </Field>
+          {!partnerId && (
+            <Field label="Показывать">
+              <Segmented
+                value={scope}
+                onChange={(v) => setScope(v as typeof scope)}
+                options={[
+                  { label: 'Все', value: 'all' },
+                  { label: 'Корневые', value: 'root' },
+                  { label: 'Подпартнёры', value: 'sub' },
+                ]}
+              />
+            </Field>
+          )}
         </Space>
 
         <Divider style={{ margin: '12px 0' }} />
@@ -105,27 +159,47 @@ export const SettlementsPage = () => {
           <Statistic title="Партнёров" value={s?.partnersCount ?? 0} />
         </Space>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          Партнёры без счетов за период в список не попадают.
+          Показаны все партнёры и подпартнёры; у кого нет счетов за период — с нулями.
+          Итоговые суммы вверху — по партнёрам с оборотом.
         </Text>
       </Card>
 
       <Card size="small">
-        <Toolbar loading={query.isFetching} onRefresh={() => query.refetch()} total={rows.length} />
+        <Toolbar
+          loading={query.isFetching || allPartners.isFetching}
+          onRefresh={() => query.refetch()}
+          total={rows.length}
+        />
         <Table
           dataSource={rows}
-          loading={query.isFetching}
+          loading={query.isFetching || allPartners.isFetching}
           rowKey="partnerId"
           size="small"
           pagination={{ pageSize: 30 }}
-          scroll={{ x: 950 }}
+          scroll={{ x: 1080 }}
           onRow={onRow}
         >
           <Table.Column
-            dataIndex="name"
             title="Партнёр"
             width={200}
             fixed="left"
-            render={(v: string) => <Text strong>{v}</Text>}
+            render={(_: unknown, r: Row) => (
+              <Space size={4}>
+                <Text strong>{r.name}</Text>
+                {r.parentPartnerId && <Tag color="geekblue">суб</Tag>}
+              </Space>
+            )}
+          />
+          <Table.Column
+            title="Родитель"
+            width={160}
+            render={(_: unknown, r: Row) =>
+              r.parentPartnerId ? (
+                r.parentName ?? <Text type="secondary">{r.parentPartnerId.slice(0, 8)}…</Text>
+              ) : (
+                <Text type="secondary">—</Text>
+              )
+            }
           />
           <Table.Column
             dataIndex="grossUsdt"

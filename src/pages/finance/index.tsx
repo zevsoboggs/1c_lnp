@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCustom } from '@refinedev/core'
-import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag } from 'antd'
+import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag, Segmented } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { money, usdt } from '../../lib/format'
 import { PartnerSelect } from '../../components/PartnerSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
+import { useAllPartners } from '../../api/usePartners'
 
 const { Text } = Typography
 
@@ -26,6 +27,22 @@ type Row = {
   invoiceCount: number
   averageInvoice: number
   isActive: boolean
+  parentPartnerId?: string | null
+  parentName?: string | null
+}
+
+const ZERO = {
+  email: '',
+  totalInvoiceAmount: 0,
+  grossInvoiceAmount: 0,
+  refundedAmount: 0,
+  refundCount: 0,
+  totalInvoiceAmountUsdt: 0,
+  platformCommissionPercent: 0,
+  platformCommissionAmount: 0,
+  partnerRevenue: 0,
+  invoiceCount: 0,
+  averageInvoice: 0,
 }
 type Stats = {
   totalRevenue: number
@@ -41,6 +58,7 @@ type Stats = {
 
 export const FinancePage = () => {
   const [partnerId, setPartnerId] = useState<string>()
+  const [scope, setScope] = useState<'all' | 'root' | 'sub'>('all')
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
 
   const { query, result } = useCustom<{ partners: Row[]; stats: Stats; note?: string }>({
@@ -56,8 +74,35 @@ export const FinancePage = () => {
     },
   })
 
-  const rows = result.data?.partners ?? []
+  const allPartners = useAllPartners()
   const s = result.data?.stats
+
+  // По одному партнёру показываем ровно ответ API. Без фильтра — сшиваем с полным
+  // списком партнёров, чтобы были ВСЕ, включая подпартнёров и тех, у кого за
+  // период нет счетов (у них нули). Родителя подставляем по карте.
+  const rows = useMemo(() => {
+    const agg = result.data?.partners ?? []
+    if (partnerId) {
+      return agg.map((r) => ({ ...r, parentName: allPartners.nameOf(r.parentPartnerId) }))
+    }
+    const aggById = new Map(agg.map((r) => [r.partnerId, r]))
+    const merged: Row[] = allPartners.list.map((p) => {
+      const a = aggById.get(p.id)
+      return {
+        ...ZERO,
+        ...(a ?? {}),
+        partnerId: p.id,
+        partnerStringId: p.partnerId,
+        name: p.name,
+        isActive: p.isActive,
+        parentPartnerId: p.parentPartnerId,
+        parentName: allPartners.nameOf(p.parentPartnerId),
+      }
+    })
+    if (scope === 'root') return merged.filter((r) => !r.parentPartnerId)
+    if (scope === 'sub') return merged.filter((r) => r.parentPartnerId)
+    return merged
+  }, [result.data, allPartners.list, partnerId, scope])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     {
@@ -95,6 +140,19 @@ export const FinancePage = () => {
           <Field label="Партнёр">
             <PartnerSelect value={partnerId} onChange={setPartnerId} />
           </Field>
+          {!partnerId && (
+            <Field label="Показывать">
+              <Segmented
+                value={scope}
+                onChange={(v) => setScope(v as typeof scope)}
+                options={[
+                  { label: 'Все', value: 'all' },
+                  { label: 'Корневые', value: 'root' },
+                  { label: 'Подпартнёры', value: 'sub' },
+                ]}
+              />
+            </Field>
+          )}
         </Space>
 
         <Divider style={{ margin: '12px 0' }} />
@@ -134,10 +192,14 @@ export const FinancePage = () => {
       </Card>
 
       <Card size="small">
-        <Toolbar loading={query.isFetching} onRefresh={() => query.refetch()} total={rows.length} />
+        <Toolbar
+          loading={query.isFetching || allPartners.isFetching}
+          onRefresh={() => query.refetch()}
+          total={rows.length}
+        />
         <Table
           dataSource={rows}
-          loading={query.isFetching}
+          loading={query.isFetching || allPartners.isFetching}
           // У строк нет id: это агрегаты, а не сущности Partner.
           rowKey="partnerId"
           size="small"
@@ -159,22 +221,23 @@ export const FinancePage = () => {
               <Table.Summary fixed>
                 <Table.Summary.Row style={{ background: '#eaf2fd', fontWeight: 600 }}>
                   <Table.Summary.Cell index={0}>Итого на странице</Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} align="right">
+                  <Table.Summary.Cell index={1} />
+                  <Table.Summary.Cell index={2} align="right">
                     {money(t.gross)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right">
+                  <Table.Summary.Cell index={3} align="right">
                     {t.refunded ? money(t.refunded) : '—'}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3} align="right">
+                  <Table.Summary.Cell index={4} align="right">
                     {money(t.commission)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={4} align="right">
+                  <Table.Summary.Cell index={5} align="right">
                     {money(t.revenue)}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5} align="right">
+                  <Table.Summary.Cell index={6} align="right">
                     {t.count}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6} />
+                  <Table.Summary.Cell index={7} />
                 </Table.Summary.Row>
               </Table.Summary>
             )
@@ -187,9 +250,21 @@ export const FinancePage = () => {
             render={(_: unknown, r: Row) => (
               <Space size={4}>
                 <Text strong>{r.name}</Text>
+                {r.parentPartnerId && <Tag color="geekblue">суб</Tag>}
                 {!r.isActive && <Tag>выкл</Tag>}
               </Space>
             )}
+          />
+          <Table.Column
+            title="Родитель"
+            width={160}
+            render={(_: unknown, r: Row) =>
+              r.parentPartnerId ? (
+                r.parentName ?? <Text type="secondary">{r.parentPartnerId.slice(0, 8)}…</Text>
+              ) : (
+                <Text type="secondary">—</Text>
+              )
+            }
           />
           <Table.Column
             dataIndex="grossInvoiceAmount"
