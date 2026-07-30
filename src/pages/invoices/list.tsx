@@ -1,6 +1,6 @@
 import { List, useTable } from '@refinedev/antd'
 import { keepPreviousData } from '@tanstack/react-query'
-import { Table, Select, Space, Card, Input, Typography, DatePicker } from 'antd'
+import { Table, Select, Space, Card, Input, Typography, DatePicker, Statistic, Divider } from 'antd'
 import type { CrudFilters } from '@refinedev/core'
 import dayjs from 'dayjs'
 import { dt, money } from '../../lib/format'
@@ -75,6 +75,13 @@ export const InvoiceList = () => {
 
   const dateFrom = valueOf('dateFrom') as string | undefined
   const dateTo = valueOf('dateTo') as string | undefined
+
+  // Сводка приходит рядом со списком и уже учитывает фильтры (партнёр, период,
+  // статус) — то есть при выбранном партнёре это оборот именно его счетов.
+  const stats = (tableQuery.data as any)?.stats as
+    | { total?: number; paid?: number; pending?: number; totalRevenue?: number }
+    | undefined
+  const selectedPartner = !!valueOf('partnerId')
 
   const { onRow, menu } = useRowMenu<any>((r) => [
     { key: 'open', label: 'Открыть детали', onClick: () => setDetailId(r.id) },
@@ -171,6 +178,26 @@ export const InvoiceList = () => {
               }
             />
           </Field>
+        </Space>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        <Space size={32} wrap>
+          <Statistic
+            title={selectedPartner ? 'Оборот партнёра (оплачено)' : 'Оборот всех (оплачено)'}
+            value={(stats?.totalRevenue ?? 0) / 100}
+            precision={2}
+            suffix="₽"
+            loading={tableQuery.isFetching}
+            valueStyle={{ fontWeight: 700, color: '#3f8600' }}
+          />
+          <Statistic title="Счетов" value={stats?.total ?? tableQuery.data?.total ?? 0} />
+          <Statistic title="Оплачено" value={stats?.paid ?? 0} />
+          <Statistic
+            title="Ожидают"
+            value={stats?.pending ?? 0}
+            valueStyle={{ color: stats?.pending ? '#d46b08' : undefined }}
+          />
         </Space>
       </Card>
 

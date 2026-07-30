@@ -29,6 +29,17 @@ type Row = {
   parentName?: string | null
 }
 
+const RANGE_PRESETS: { label: string; value: [Dayjs, Dayjs] }[] = [
+  { label: 'Сегодня', value: [dayjs().startOf('day'), dayjs()] },
+  { label: 'Вчера', value: [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')] },
+  { label: 'Последние 7 дней', value: [dayjs().subtract(6, 'day').startOf('day'), dayjs()] },
+  { label: 'Этот месяц', value: [dayjs().startOf('month'), dayjs()] },
+  {
+    label: 'Прошлый месяц',
+    value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')],
+  },
+]
+
 const ZERO = {
   totalUsdt: 0,
   grossUsdt: 0,
@@ -136,6 +147,7 @@ export const SettlementsPage = () => {
               format="DD.MM.YYYY"
               allowClear={false}
               style={{ width: 250 }}
+              presets={RANGE_PRESETS}
             />
           </Field>
           <Field label="Партнёр">
