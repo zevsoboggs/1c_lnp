@@ -62,6 +62,24 @@ export const InvoiceList = () => {
       'merge',
     )
 
+  // Поиск ищет конкретный счёт — период не должен его прятать. Поэтому при
+  // поиске переключаемся на «Всё время» (иначе счёт из прошлого месяца не найти).
+  const applySearch = (v?: string) => {
+    if (v) {
+      setFilters(
+        [
+          { field: 'search', operator: 'eq', value: v },
+          { field: 'period', operator: 'eq', value: 'all' },
+          { field: 'dateFrom', operator: 'eq', value: undefined },
+          { field: 'dateTo', operator: 'eq', value: undefined },
+        ],
+        'merge',
+      )
+    } else {
+      apply('search', undefined)
+    }
+  }
+
   const applyRange = (from?: string, to?: string) =>
     setFilters(
       [
@@ -137,7 +155,7 @@ export const InvoiceList = () => {
               placeholder="Номер, email, телефон…"
               style={{ width: 260 }}
               defaultValue={valueOf('search') as string}
-              onSearch={(v) => apply('search', v || undefined)}
+              onSearch={(v) => applySearch(v || undefined)}
             />
           </Field>
           <Field label="Партнёр">

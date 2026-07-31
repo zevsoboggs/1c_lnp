@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer, Descriptions, Spin, Alert, Space, Button, Tag, Typography, Card, Table } from 'antd'
-import { PrinterOutlined } from '@ant-design/icons'
+import { PrinterOutlined, FileImageOutlined } from '@ant-design/icons'
 import { dt, money } from '../../lib/format'
 import { INVOICE_STATUS } from '../../lib/enums'
 import { StatusTag } from '../../components/StatusTag'
 import { PrintDocument } from '../../components/PrintDocument'
+import { downloadReceiptImage } from '../../lib/receiptImage'
 import { action } from '../../api/actions'
 
 const { Text } = Typography
@@ -59,9 +60,32 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
       title="Счёт (инвойс)"
       extra={
         inv && (
-          <Button icon={<PrinterOutlined />} onClick={() => setPrinting(true)}>
-            Документ
-          </Button>
+          <Space>
+            <Button
+              icon={<FileImageOutlined />}
+              onClick={() =>
+                downloadReceiptImage({
+                  invoiceNumber: inv.invoiceNumber,
+                  amount: inv.amount,
+                  currency: inv.currency ?? 'RUB',
+                  status: inv.status,
+                  statusLabel: INVOICE_STATUS.find((s) => s.value === inv.status)?.label ?? inv.status,
+                  partner: inv.partnerName ?? inv.partner?.name ?? '—',
+                  payerName: payer?.name,
+                  payerPhone: payer?.phone,
+                  customer: inv.customerName,
+                  createdAt: inv.createdAt,
+                  paidAt: inv.paidAt,
+                  description: inv.description,
+                })
+              }
+            >
+              Чек (PNG)
+            </Button>
+            <Button icon={<PrinterOutlined />} onClick={() => setPrinting(true)}>
+              Документ
+            </Button>
+          </Space>
         )
       }
     >
