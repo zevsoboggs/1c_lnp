@@ -51,6 +51,9 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
   const txns: any[] = inv?.transactions ?? []
   const refunds: any[] = inv?.refundRequests ?? []
   const payer = inv ? extractPayer(inv) : null
+  // ID заказа у эквайера — из транзакции, где он есть (для сверки в Kanyon/Paysido).
+  const orderTxn = txns.find((t) => t.externalOrderId ?? t.qrcId)
+  const providerOrderId = orderTxn?.externalOrderId ?? orderTxn?.qrcId ?? null
 
   return (
     <Drawer
@@ -159,22 +162,50 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
                 ),
               },
               { key: 'rc', label: 'Чек', children: inv.receiptStatus ?? '—' },
+              {
+                key: 'oid',
+                label: 'ID заказа (эквайер)',
+                children: providerOrderId ? (
+                  <Text copyable={{ text: String(providerOrderId) }} strong>
+                    {providerOrderId}
+                    {orderTxn?.provider ? (
+                      <Text type="secondary" style={{ fontWeight: 400 }}> · {orderTxn.provider}</Text>
+                    ) : null}
+                  </Text>
+                ) : (
+                  '—'
+                ),
+              },
               { key: 'd', label: 'Описание', span: 2, children: inv.description ?? '—' },
             ]}
           />
 
           {txns.length > 0 && (
             <Card size="small" title={`Транзакции · ${txns.length}`}>
-              <Table dataSource={txns} rowKey="id" size="small" pagination={false}>
+              <Table dataSource={txns} rowKey="id" size="small" pagination={false} scroll={{ x: 620 }}>
                 <Table.Column dataIndex="createdAt" title="Создана" width={140} render={(v: string) => dt(v)} />
                 <Table.Column dataIndex="status" title="Статус" width={130} />
                 <Table.Column
                   dataIndex="amount"
                   title="Сумма"
                   align="right"
+                  width={110}
                   render={(v: number) => money(v)}
                 />
                 <Table.Column dataIndex="provider" title="Провайдер" width={110} />
+                {/* ID заказа у эквайера (Kanyon/Paysido…) — его копируют для сверки. */}
+                <Table.Column
+                  title="ID заказа (эквайер)"
+                  width={190}
+                  render={(_: unknown, t: any) => {
+                    const oid = t.externalOrderId ?? t.qrcId ?? t.merchantOrderId
+                    return oid ? (
+                      <Text copyable={{ text: String(oid) }}>{oid}</Text>
+                    ) : (
+                      <Text type="secondary">—</Text>
+                    )
+                  }}
+                />
               </Table>
             </Card>
           )}
