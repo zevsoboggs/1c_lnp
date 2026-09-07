@@ -6,8 +6,7 @@ import dayjs from 'dayjs'
 import { dt, money } from '../../lib/format'
 import { INVOICE_STATUS, selectOptions } from '../../lib/enums'
 import { StatusTag } from '../../components/StatusTag'
-import { PartnerSelect } from '../../components/PartnerSelect'
-import { UserSelect } from '../../components/UserSelect'
+import { PartnerOrAccountSelect } from '../../components/PartnerOrAccountSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { SyncInvoiceButton, MarkRefundedButton, BulkSyncButton } from './Actions'
@@ -84,11 +83,12 @@ export const InvoiceList = () => {
   // Выбор партнёра/аккаунта: снимаем ограничение по периоду. У части партнёров
   // (напр. Positive) свежих счетов нет вовсе — при «Неделе» список был пустым,
   // хотя данные есть, просто более старые.
-  const applyScope = (field: 'partnerId' | 'userId', value?: string) =>
+  const applyPick = (pId?: string, uId?: string) =>
     setFilters(
       [
-        { field, operator: 'eq', value },
-        ...(value
+        { field: 'partnerId', operator: 'eq', value: pId },
+        { field: 'userId', operator: 'eq', value: uId },
+        ...(pId || uId
           ? ([
               { field: 'period', operator: 'eq', value: 'all' },
               { field: 'dateFrom', operator: 'eq', value: undefined },
@@ -119,6 +119,7 @@ export const InvoiceList = () => {
     | { total?: number; paid?: number; pending?: number; totalRevenue?: number }
     | undefined
   const selectedPartner = !!valueOf('partnerId')
+  const selectedUser = !!valueOf('userId')
 
   const { onRow, menu } = useRowMenu<any>((r) => [
     { key: 'open', label: 'Открыть детали', onClick: () => setDetailId(r.id) },
@@ -131,7 +132,7 @@ export const InvoiceList = () => {
     r.partnerId && {
       key: 'partner',
       label: `Показать всё по «${r.partnerName ?? r.partner?.name ?? 'партнёру'}»`,
-      onClick: () => applyScope('partnerId', r.partnerId),
+      onClick: () => applyPick(r.partnerId, undefined),
     },
     r.status && {
       key: 'status',
@@ -177,16 +178,11 @@ export const InvoiceList = () => {
               onSearch={(v) => applySearch(v || undefined)}
             />
           </Field>
-          <Field label="Партнёр">
-            <PartnerSelect
-              value={valueOf('partnerId') as string}
-              onChange={(v) => applyScope('partnerId', v)}
-            />
-          </Field>
-          <Field label="Аккаунт">
-            <UserSelect
-              value={valueOf('userId') as string}
-              onChange={(v) => applyScope('userId', v)}
+          <Field label="Партнёр / аккаунт">
+            <PartnerOrAccountSelect
+              partnerId={valueOf('partnerId') as string}
+              userId={valueOf('userId') as string}
+              onPick={applyPick}
             />
           </Field>
           <Field label="Статус">
@@ -227,7 +223,13 @@ export const InvoiceList = () => {
 
         <Space size={32} wrap>
           <Statistic
-            title={selectedPartner ? 'Оборот партнёра (оплачено)' : 'Оборот всех (оплачено)'}
+            title={
+              selectedUser
+                ? 'Оборот аккаунта (оплачено)'
+                : selectedPartner
+                  ? 'Оборот партнёра (оплачено)'
+                  : 'Оборот всех (оплачено)'
+            }
             value={(stats?.totalRevenue ?? 0) / 100}
             precision={2}
             suffix="₽"
