@@ -34,6 +34,7 @@ export type UserLite = {
   name: string
   role: string
   partnerId: string | null
+  partnerName?: string | null
 }
 
 /**

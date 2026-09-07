@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useCustom } from '@refinedev/core'
+import { useQuery } from '@tanstack/react-query'
 import { Card, Table, Space, Statistic, Typography, DatePicker, Divider, Tag, Segmented, Input } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { money, usdt } from '../../lib/format'
@@ -8,6 +9,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAllPartners, useAllUsers } from '../../api/usePartners'
+import { action } from '../../api/actions'
 import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
 
 const { Text } = Typography
@@ -30,6 +32,7 @@ type Row = {
   isActive: boolean
   parentPartnerId?: string | null
   parentName?: string | null
+  outsideSummary?: boolean
 }
 
 // Быстрые пресеты периода в выпадашке календаря (плюс любой свой диапазон).
@@ -94,6 +97,32 @@ export const FinancePage = () => {
   const from = range[0].format('YYYY-MM-DD')
   const to = range[1].format('YYYY-MM-DD')
 
+  // Сводка API не отдаёт заблокированных/отклонённых партнёров (isBlocked),
+  // а исторический оборот у них есть. Добираем его по их счетам — таких
+  // партнёров единицы, поэтому запросов немного.
+  const missingIds = useMemo(() => {
+    const agg = new Set((result.data?.partners ?? []).map((r) => r.partnerId))
+    return allPartners.list.filter((p) => !agg.has(p.id)).map((p) => p.id)
+  }, [result.data, allPartners.list])
+
+  const extra = useQuery({
+    queryKey: ['finance-outside', from, to, missingIds.join(',')],
+    enabled: !partnerId && missingIds.length > 0 && missingIds.length <= 25,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out: Record<string, { gross: number; count: number }> = {}
+      for (const id of missingIds) {
+        const r = await action<any>(
+          `/invoices?partner=${id}&dateFrom=${from}&dateTo=${to}&limit=1`,
+          { method: 'GET' },
+        )
+        const st = r?.stats ?? {}
+        out[id] = { gross: Number(st.totalRevenue) || 0, count: Number(st.total) || 0 }
+      }
+      return out
+    },
+  })
+
   // По одному партнёру показываем ровно ответ API. Без фильтра — сшиваем с полным
   // списком партнёров, чтобы были ВСЕ, включая подпартнёров и тех, у кого за
   // период нет счетов (у них нули). Родителя подставляем по карте.
@@ -106,9 +135,12 @@ export const FinancePage = () => {
       const aggById = new Map(agg.map((r) => [r.partnerId, r]))
       const merged: Row[] = allPartners.list.map((p) => {
         const a = aggById.get(p.id)
+        const ex = !a ? extra.data?.[p.id] : undefined
         return {
           ...ZERO,
           ...(a ?? {}),
+          ...(ex ? { grossInvoiceAmount: ex.gross, invoiceCount: ex.count } : {}),
+          outsideSummary: !a,
           partnerId: p.id,
           partnerStringId: p.partnerId,
           name: p.name,
@@ -137,7 +169,7 @@ export const FinancePage = () => {
       )
     }
     return base
-  }, [result.data, allPartners.list, allUsers.list, partnerId, scope, emailSearch])
+  }, [result.data, allPartners.list, allUsers.list, extra.data, partnerId, scope, emailSearch])
 
   const { onRow, menu } = useRowMenu<Row>((r) => [
     {
@@ -317,6 +349,11 @@ export const FinancePage = () => {
                 <Text strong>{r.name}</Text>
                 {r.parentPartnerId && <Tag color="geekblue">суб</Tag>}
                 {!r.isActive && <Tag>выкл</Tag>}
+                {r.outsideSummary && (
+                  <Tag color="orange" title="Партнёр заблокирован — сводка API его не отдаёт, оборот посчитан по счетам">
+                    вне сводки
+                  </Tag>
+                )}
               </Space>
             )}
           />

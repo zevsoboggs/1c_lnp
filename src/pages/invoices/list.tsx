@@ -7,6 +7,7 @@ import { dt, money } from '../../lib/format'
 import { INVOICE_STATUS, selectOptions } from '../../lib/enums'
 import { StatusTag } from '../../components/StatusTag'
 import { PartnerSelect } from '../../components/PartnerSelect'
+import { UserSelect } from '../../components/UserSelect'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { SyncInvoiceButton, MarkRefundedButton, BulkSyncButton } from './Actions'
@@ -80,6 +81,24 @@ export const InvoiceList = () => {
     }
   }
 
+  // Выбор партнёра/аккаунта: снимаем ограничение по периоду. У части партнёров
+  // (напр. Positive) свежих счетов нет вовсе — при «Неделе» список был пустым,
+  // хотя данные есть, просто более старые.
+  const applyScope = (field: 'partnerId' | 'userId', value?: string) =>
+    setFilters(
+      [
+        { field, operator: 'eq', value },
+        ...(value
+          ? ([
+              { field: 'period', operator: 'eq', value: 'all' },
+              { field: 'dateFrom', operator: 'eq', value: undefined },
+              { field: 'dateTo', operator: 'eq', value: undefined },
+            ] as const)
+          : []),
+      ] as any,
+      'merge',
+    )
+
   const applyRange = (from?: string, to?: string) =>
     setFilters(
       [
@@ -112,7 +131,7 @@ export const InvoiceList = () => {
     r.partnerId && {
       key: 'partner',
       label: `Показать всё по «${r.partnerName ?? r.partner?.name ?? 'партнёру'}»`,
-      onClick: () => apply('partnerId', r.partnerId),
+      onClick: () => applyScope('partnerId', r.partnerId),
     },
     r.status && {
       key: 'status',
@@ -161,7 +180,13 @@ export const InvoiceList = () => {
           <Field label="Партнёр">
             <PartnerSelect
               value={valueOf('partnerId') as string}
-              onChange={(v) => apply('partnerId', v)}
+              onChange={(v) => applyScope('partnerId', v)}
+            />
+          </Field>
+          <Field label="Аккаунт">
+            <UserSelect
+              value={valueOf('userId') as string}
+              onChange={(v) => applyScope('userId', v)}
             />
           </Field>
           <Field label="Статус">
