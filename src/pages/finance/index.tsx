@@ -11,6 +11,7 @@ import { useRowMenu } from '../../components/useRowMenu'
 import { useAllPartners, useAllUsers } from '../../api/usePartners'
 import { action } from '../../api/actions'
 import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -285,7 +286,7 @@ export const FinancePage = () => {
           onRefresh={() => query.refetch()}
           total={rows.length}
         />
-        <Table
+        <DataTable
           dataSource={rows}
           loading={query.isFetching || allPartners.isFetching}
           // У строк нет id: это агрегаты, а не сущности Partner.
@@ -451,7 +452,7 @@ export const FinancePage = () => {
             width={150}
             render={(v: string) => <Text copyable={!!v}>{v}</Text>}
           />
-        </Table>
+        </DataTable>
       </Card>
     </Space>
   )

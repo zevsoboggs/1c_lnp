@@ -14,6 +14,7 @@ import { StatusTag } from '../../components/StatusTag'
 import { REFUND_STATUS } from '../../lib/apiEnums'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -153,7 +154,7 @@ export const RefundList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Создана" width={140} render={(v: string) => dt(v)} />
         <Table.Column
           dataIndex="status"
@@ -217,7 +218,7 @@ export const RefundList = () => {
             )
           }
         />
-      </Table>
+      </DataTable>
 
       <DangerConfirm
         open={!!approving}

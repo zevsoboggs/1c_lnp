@@ -9,6 +9,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { LogRangePicker } from '../../components/LogRangePicker'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -143,7 +144,7 @@ export const AuditLogList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Когда" width={140} render={(v: string) => dt(v)} />
         <Table.Column
           dataIndex="action"
@@ -208,7 +209,7 @@ export const AuditLogList = () => {
             <Button size="small" icon={<EyeOutlined />} onClick={() => setViewing(r)} />
           )}
         />
-      </Table>
+      </DataTable>
 
       <Drawer open={!!viewing} onClose={() => setViewing(null)} title="Запись аудита" width={720}>
         {viewing && (

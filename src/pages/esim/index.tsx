@@ -20,6 +20,7 @@ import { dt } from '../../lib/format'
 import { Toolbar } from '../../components/Toolbar'
 import { Field } from '../../components/Field'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -359,7 +360,7 @@ export const EsimPage = () => {
                     />
                   )}
 
-                  <Table
+                  <DataTable
                     dataSource={shownOrders}
                     loading={orders.query.isFetching}
                     rowKey="id"
@@ -444,7 +445,7 @@ export const EsimPage = () => {
                       width={120}
                       render={(v: string) => v ?? <Text type="secondary">—</Text>}
                     />
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },
@@ -452,7 +453,7 @@ export const EsimPage = () => {
               key: 'buyers',
               label: `Покупатели · ${buyers.length}`,
               children: (
-                <Table
+                <DataTable
                   dataSource={buyers}
                   loading={orders.query.isFetching}
                   rowKey="userId"
@@ -516,7 +517,7 @@ export const EsimPage = () => {
                     sorter={(a: any, b: any) => a.last.valueOf() - b.last.valueOf()}
                     render={(_: unknown, r: any) => r.last.format('DD.MM.YYYY')}
                   />
-                </Table>
+                </DataTable>
               ),
             },
             {
@@ -537,7 +538,7 @@ export const EsimPage = () => {
                       </Text>
                     )}
                   </Space>
-                  <Table
+                  <DataTable
                     dataSource={shownPlans}
                     loading={plans.query.isFetching}
                     rowKey="id"
@@ -586,7 +587,7 @@ export const EsimPage = () => {
                       ellipsis
                       render={(v: string) => v ?? '—'}
                     />
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },

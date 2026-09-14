@@ -35,6 +35,7 @@ import { DangerConfirm } from '../../components/DangerAction'
 import { vccApi, CARD_STATUS, type Card, type CardTxn } from '../../api/vcc'
 import { RevealModal, AmountModal, ContactModal } from './CardActions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -230,7 +231,7 @@ export const VccPage = () => {
                     onRefresh={refetchAll}
                   />
 
-                  <Table
+                  <DataTable
                     dataSource={list}
                     loading={cards.isFetching}
                     rowKey="card_id"
@@ -339,7 +340,7 @@ export const VccPage = () => {
                         </Space>
                       )}
                     />
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },
@@ -393,7 +394,7 @@ export const VccPage = () => {
                     onRefresh={() => txns.refetch()}
                   />
 
-                  <Table
+                  <DataTable
                     dataSource={txns.data?.transactions ?? []}
                     loading={txns.isFetching}
                     rowKey="id"
@@ -484,7 +485,7 @@ export const VccPage = () => {
                       ellipsis
                       render={(v: string) => (v ? <Text type="danger">{v}</Text> : '—')}
                     />
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },

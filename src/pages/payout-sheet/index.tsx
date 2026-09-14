@@ -33,6 +33,7 @@ import { useRowMenu } from '../../components/useRowMenu'
 import { recentPeriods, lastPeriod } from '../../lib/week'
 import { exportToExcel } from '../../lib/export'
 import { PrintDocument } from '../../components/PrintDocument'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -310,7 +311,7 @@ export const PayoutSheet = () => {
           </Button>
         }
       >
-        <Table
+        <DataTable
           dataSource={sheets.data?.sheets ?? []}
           loading={sheets.isFetching}
           rowKey="id"
@@ -404,7 +405,7 @@ export const PayoutSheet = () => {
               </Space>
             )}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       {printSheet && (

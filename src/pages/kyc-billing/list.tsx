@@ -28,6 +28,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -186,7 +187,7 @@ export const KycBillingList = () => {
 
         <Toolbar total={rows.length} loading={query.isFetching} onRefresh={() => query.refetch()} />
 
-        <Table
+        <DataTable
           dataSource={rows}
           loading={query.isFetching}
           rowKey="id"
@@ -275,7 +276,7 @@ export const KycBillingList = () => {
               <Button size="small" icon={<EditOutlined />} title="Изменить тариф" onClick={() => open(r)} />
             )}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <Modal

@@ -24,6 +24,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { DangerConfirm } from '../../components/DangerAction'
 import { broadcasts, AUDIENCES, type Broadcast } from '../../api/miniappUsers'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text, Paragraph } = Typography
 
@@ -212,7 +213,7 @@ export const MiniappBroadcast = () => {
           loading={history.isFetching}
           onRefresh={() => history.refetch()}
         />
-        <Table
+        <DataTable
           dataSource={history.data?.broadcasts ?? []}
           loading={history.isFetching}
           rowKey="id"
@@ -270,7 +271,7 @@ export const MiniappBroadcast = () => {
             ellipsis
             render={(v: string) => <Text style={{ fontSize: 12 }}>{v}</Text>}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <DangerConfirm

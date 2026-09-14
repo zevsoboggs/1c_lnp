@@ -4,6 +4,7 @@ import { dt } from '../../lib/format'
 import { Toolbar } from '../../components/Toolbar'
 import { miniappApi, type Order } from '../../api/miniapp'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -117,7 +118,7 @@ export const MiniappReferrals = () => {
 
       <Card title="Комиссии по статусам" size="small">
         <Toolbar loading={stats.isFetching} onRefresh={() => stats.refetch()} />
-        <Table
+        <DataTable
           dataSource={commissions.map(([status, v]) => ({ status, ...v }))}
           rowKey="status"
           size="small"
@@ -172,7 +173,7 @@ export const MiniappReferrals = () => {
               ) : null
             }
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <Card title={`Выплаты рефералов · ${rows.length}`} size="small">
@@ -193,7 +194,7 @@ export const MiniappReferrals = () => {
           onRefresh={() => payouts.refetch()}
         />
 
-        <Table
+        <DataTable
           dataSource={rows}
           loading={payouts.isFetching}
           rowKey="id"
@@ -260,7 +261,7 @@ export const MiniappReferrals = () => {
             ellipsis
             render={(v: string) => <Text style={{ fontSize: 12 }}>{v ?? '—'}</Text>}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <Alert

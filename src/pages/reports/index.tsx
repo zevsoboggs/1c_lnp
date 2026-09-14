@@ -21,6 +21,7 @@ import { Field } from '../../components/Field'
 import { dt, money } from '../../lib/format'
 import { action } from '../../api/actions'
 import { exportToExcel, rub, type ExportColumn } from '../../lib/export'
+import { DataTable } from '../../components/DataTable'
 
 const { Text, Title } = Typography
 
@@ -392,7 +393,7 @@ function ReportResult({
           />
         )}
 
-        <Table
+        <DataTable
           dataSource={payers}
           rowKey={(_r, i) => String(i)}
           size="small"
@@ -453,7 +454,7 @@ function ReportResult({
             sorter={(a: any, b: any) => a.sum - b.sum}
             render={(_: unknown, p: any) => <Text strong>{money(p.sum)}</Text>}
           />
-        </Table>
+        </DataTable>
       </Card>
     )
   }
@@ -594,7 +595,7 @@ function ReportResult({
           description="Отчёт ограничен 500 строками за раз. Сузьте период, чтобы увидеть и выгрузить все данные."
         />
       )}
-      <Table
+      <DataTable
         dataSource={cfg.rows}
         rowKey={(r: any, i) => r.id ?? String(i)}
         size="small"
@@ -605,7 +606,7 @@ function ReportResult({
         {cfg.columns.map((c) => (
           <Table.Column key={c.key} title={c.title} width={c.width} render={(_: unknown, r: any) => c.render(r)} />
         ))}
-      </Table>
+      </DataTable>
     </Card>
   )
 }

@@ -19,6 +19,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { miniappUsers, type MiniappUser } from '../../api/miniappUsers'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -103,7 +104,7 @@ export const MiniappUsers = () => {
       <Card size="small">
         <Toolbar total={q.data?.total} loading={q.isFetching} onRefresh={() => q.refetch()} />
 
-        <Table
+        <DataTable
           dataSource={rows}
           loading={q.isFetching}
           rowKey="id"
@@ -219,7 +220,7 @@ export const MiniappUsers = () => {
               <Button size="small" icon={<EyeOutlined />} onClick={() => setViewing(r)} />
             )}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       {/* Данные берём из строки списка: отдельный GET /users/{id} у мини-аппа

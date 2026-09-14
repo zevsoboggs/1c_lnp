@@ -8,6 +8,7 @@ import { StatusTag } from '../../components/StatusTag'
 import { PrintDocument } from '../../components/PrintDocument'
 import { downloadReceiptImage } from '../../lib/receiptImage'
 import { action } from '../../api/actions'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -182,7 +183,7 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
 
           {txns.length > 0 && (
             <Card size="small" title={`Транзакции · ${txns.length}`}>
-              <Table dataSource={txns} rowKey="id" size="small" pagination={false} scroll={{ x: 620 }}>
+              <DataTable dataSource={txns} rowKey="id" size="small" pagination={false} scroll={{ x: 620 }}>
                 <Table.Column dataIndex="createdAt" title="Создана" width={140} render={(v: string) => dt(v)} />
                 <Table.Column dataIndex="status" title="Статус" width={130} />
                 <Table.Column
@@ -206,13 +207,13 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
                     )
                   }}
                 />
-              </Table>
+              </DataTable>
             </Card>
           )}
 
           {refunds.length > 0 && (
             <Card size="small" title={`Возвраты · ${refunds.length}`}>
-              <Table dataSource={refunds} rowKey="id" size="small" pagination={false}>
+              <DataTable dataSource={refunds} rowKey="id" size="small" pagination={false}>
                 <Table.Column dataIndex="createdAt" title="Создан" width={140} render={(v: string) => dt(v)} />
                 <Table.Column dataIndex="status" title="Статус" width={130} />
                 <Table.Column
@@ -221,7 +222,7 @@ export function InvoiceDetail({ id, onClose }: { id: string | null; onClose: () 
                   align="right"
                   render={(v: number) => money(v)}
                 />
-              </Table>
+              </DataTable>
             </Card>
           )}
         </Space>

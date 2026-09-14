@@ -15,6 +15,7 @@ import { exportToExcel, rub } from '../../lib/export'
 import { Button } from 'antd'
 import { EyeOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useState } from 'react'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -139,7 +140,7 @@ export const TransactionList = () => {
 
       {menu}
 
-      <Table
+      <DataTable
         {...tableProps}
         rowKey="id"
         size="small"
@@ -205,7 +206,7 @@ export const TransactionList = () => {
             />
           )}
         />
-      </Table>
+      </DataTable>
 
       <TransactionDetail id={detailId} onClose={() => setDetailId(null)} />
     </List>

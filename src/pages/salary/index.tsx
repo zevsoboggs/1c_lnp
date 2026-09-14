@@ -31,6 +31,7 @@ import { money } from '../../lib/format'
 import { exportToExcel } from '../../lib/export'
 import { salaryApi, type PreviewSheet, type SavedSheet } from '../../api/salary'
 import { canWrite } from '../../api/accessControl'
+import { DataTable } from '../../components/DataTable'
 
 dayjs.extend(isoWeek)
 
@@ -192,7 +193,7 @@ export const SalaryPage = () => {
             />
           ) : (
             <>
-              <Table
+              <DataTable
                 dataSource={preview.lines}
                 rowKey="partnerId"
                 size="small"
@@ -225,7 +226,7 @@ export const SalaryPage = () => {
                   align="right"
                   render={(v: number) => <Text strong>{rub(v)}</Text>}
                 />
-              </Table>
+              </DataTable>
               {editable && (
                 <>
                   <Divider style={{ margin: '12px 0' }} />
@@ -244,7 +245,7 @@ export const SalaryPage = () => {
 
       <Card size="small" title="Сохранённые зарплатные листы">
         <Toolbar total={sheetsQ.data?.sheets.length ?? 0} loading={sheetsQ.isFetching} onRefresh={() => sheetsQ.refetch()} />
-        <Table
+        <DataTable
           dataSource={sheetsQ.data?.sheets ?? []}
           loading={sheetsQ.isFetching}
           rowKey="id"
@@ -280,7 +281,7 @@ export const SalaryPage = () => {
               </Space>
             )}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <SheetDrawer sheet={viewing} onClose={() => setViewing(null)} />
@@ -325,7 +326,7 @@ function SheetDrawer({ sheet, onClose }: { sheet: SavedSheet | null; onClose: ()
             valueStyle={{ color: '#3f8600', fontWeight: 700 }}
           />
           {sheet.comment && <Alert type="info" message={sheet.comment} />}
-          <Table dataSource={lines} rowKey="partner_id" size="small" pagination={false} loading={q.isFetching}>
+          <DataTable dataSource={lines} rowKey="partner_id" size="small" pagination={false} loading={q.isFetching}>
             <Table.Column dataIndex="partner_name" title="Партнёр" render={(v: string) => <Text strong>{v}</Text>} />
             <Table.Column
               dataIndex="turnover_rub"
@@ -348,7 +349,7 @@ function SheetDrawer({ sheet, onClose }: { sheet: SavedSheet | null; onClose: ()
               align="right"
               render={(v: string) => <Text strong>{rub(v)}</Text>}
             />
-          </Table>
+          </DataTable>
           <Text type="secondary" style={{ fontSize: 12 }}>
             Проценты и обороты заморожены на момент сохранения листа.
           </Text>

@@ -7,6 +7,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -106,7 +107,7 @@ export const PosMarkupList = () => {
         onRefresh={() => query.refetch()}
       />
 
-      <Table
+      <DataTable
         dataSource={rows}
         loading={query.isFetching}
         rowKey="id"
@@ -194,7 +195,7 @@ export const PosMarkupList = () => {
         />
         <Table.Column dataIndex="usersCount" title="Юзеров" width={90} align="right" />
         <Table.Column dataIndex="subPartnersCount" title="Суб-партнёров" width={130} align="right" />
-      </Table>
+      </DataTable>
     </Card>
   )
 }

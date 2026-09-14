@@ -30,6 +30,7 @@ import { useRowMenu } from '../../components/useRowMenu'
 import { adminApi, type AdminUser } from '../../api/adminUsers'
 import { canWrite } from '../../api/accessControl'
 import { getMe } from '../../api/authProvider'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -144,7 +145,7 @@ export const AdminUsers = () => {
               children: (
                 <>
                   <Toolbar total={users.length} loading={q.isFetching} onRefresh={() => q.refetch()} />
-                  <Table
+                  <DataTable
                     dataSource={users}
                     loading={q.isFetching}
                     rowKey="id"
@@ -232,7 +233,7 @@ export const AdminUsers = () => {
                         )}
                       />
                     )}
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },
@@ -249,7 +250,7 @@ export const AdminUsers = () => {
                     description="В аудите loveandpay все действия отсюда выглядят как «admin-api (1C)» — по нему не понять, какой оператор нажал кнопку. Здесь видно имя."
                   />
                   <Toolbar loading={audit.isFetching} onRefresh={() => audit.refetch()} />
-                  <Table
+                  <DataTable
                     dataSource={audit.data?.entries ?? []}
                     loading={audit.isFetching}
                     rowKey="id"
@@ -297,7 +298,7 @@ export const AdminUsers = () => {
                         )
                       }
                     />
-                  </Table>
+                  </DataTable>
                 </>
               ),
             },

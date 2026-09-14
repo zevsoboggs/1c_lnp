@@ -19,6 +19,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { DangerConfirm } from '../../components/DangerAction'
 import { salaryApi, type Rate } from '../../api/salary'
 import { canWrite } from '../../api/accessControl'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -86,7 +87,7 @@ export const SalaryRates = () => {
           description="Здесь заводятся проценты (0.1 %, 0.5 % и любые другие). Их назначают партнёрам в разделе «Проценты партнёров», а зарплата берёт оборот партнёра × его ставку."
         />
         <Toolbar total={rates.length} loading={q.isFetching} onRefresh={() => q.refetch()} />
-        <Table
+        <DataTable
           dataSource={rates}
           loading={q.isFetching}
           rowKey="id"
@@ -140,7 +141,7 @@ export const SalaryRates = () => {
               )}
             />
           )}
-        </Table>
+        </DataTable>
       </Card>
 
       <Modal

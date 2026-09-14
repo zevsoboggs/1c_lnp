@@ -5,6 +5,7 @@ import { Card, Table, Space, Typography, Select, Input, Alert, Segmented, App, T
 import { Toolbar } from '../../components/Toolbar'
 import { salaryApi, type Assignment } from '../../api/salary'
 import { canWrite } from '../../api/accessControl'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -104,7 +105,7 @@ export const PartnerRates = () => {
             Назначено: {assignedCount}
           </Text>
         </Toolbar>
-        <Table
+        <DataTable
           dataSource={rows}
           loading={loading}
           rowKey="id"
@@ -138,7 +139,7 @@ export const PartnerRates = () => {
               )
             }
           />
-        </Table>
+        </DataTable>
       </Card>
     </Space>
   )

@@ -13,6 +13,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { UserForm } from './UserForm'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -125,7 +126,7 @@ export const UserList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 900 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 900 }} onRow={onRow}>
         <Table.Column
           dataIndex="name"
           title="Имя"
@@ -179,7 +180,7 @@ export const UserList = () => {
             />
           )}
         />
-      </Table>
+      </DataTable>
 
       <UserForm
         open={!!form}

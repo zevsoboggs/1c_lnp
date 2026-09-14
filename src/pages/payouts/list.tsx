@@ -7,6 +7,7 @@ import { StatusTag } from '../../components/StatusTag'
 import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -63,7 +64,7 @@ export const PayoutList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Создана" width={150} render={(v: string) => dt(v)} />
         <Table.Column
           dataIndex="status"
@@ -103,7 +104,7 @@ export const PayoutList = () => {
           title="Ошибка"
           render={(v: string) => (v ? <Text type="danger">{v}</Text> : '—')}
         />
-      </Table>
+      </DataTable>
     </List>
   )
 }

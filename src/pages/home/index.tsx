@@ -25,6 +25,7 @@ import {
 import dayjs from 'dayjs'
 import { action } from '../../api/actions'
 import { money, usdt } from '../../lib/format'
+import { DataTable } from '../../components/DataTable'
 
 const { Text, Title } = Typography
 
@@ -256,7 +257,7 @@ export const Home = () => {
         {s && s.top.length === 0 ? (
           <Text type="secondary">Нет оплат за период</Text>
         ) : (
-          <Table
+          <DataTable
             dataSource={s?.top ?? []}
             rowKey="name"
             size="small"
@@ -296,7 +297,7 @@ export const Home = () => {
               align="right"
               render={(v: number) => new Intl.NumberFormat('ru-RU').format(v)}
             />
-          </Table>
+          </DataTable>
         )}
         <Divider style={{ margin: '12px 0 8px' }} />
         <Text type="secondary" style={{ fontSize: 12 }}>

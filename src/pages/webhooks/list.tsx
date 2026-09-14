@@ -12,6 +12,7 @@ import { SecretOnce } from '../../components/SecretOnce'
 import { WebhookForm } from './WebhookForm'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -147,7 +148,7 @@ export const WebhookList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
         <Table.Column
           dataIndex="url"
           title="URL"
@@ -232,7 +233,7 @@ export const WebhookList = () => {
             </Space>
           )}
         />
-      </Table>
+      </DataTable>
 
       <Drawer
         open={!!historyOf}
@@ -243,7 +244,7 @@ export const WebhookList = () => {
         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
           {historyOf?.url}
         </Text>
-        <Table
+        <DataTable
           dataSource={deliveries}
           loading={loadingHistory}
           rowKey="id"
@@ -266,7 +267,7 @@ export const WebhookList = () => {
             ellipsis
             render={(v: string) => (v ? <Text type="danger">{v}</Text> : '—')}
           />
-        </Table>
+        </DataTable>
       </Drawer>
 
       <WebhookForm

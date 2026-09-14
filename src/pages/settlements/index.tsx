@@ -9,6 +9,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { useRowMenu } from '../../components/useRowMenu'
 import { useAllPartners, useAllUsers } from '../../api/usePartners'
 import { PartnerTurnoverByUser } from '../../components/PartnerTurnoverByUser'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -228,7 +229,7 @@ export const SettlementsPage = () => {
           onRefresh={() => query.refetch()}
           total={rows.length}
         />
-        <Table
+        <DataTable
           dataSource={rows}
           loading={query.isFetching || allPartners.isFetching}
           rowKey="partnerId"
@@ -317,7 +318,7 @@ export const SettlementsPage = () => {
             align="right"
             sorter={(a: Row, b: Row) => a.invoiceCount - b.invoiceCount}
           />
-        </Table>
+        </DataTable>
       </Card>
     </Space>
   )

@@ -11,6 +11,7 @@ import { DangerConfirm } from '../../components/DangerAction'
 import { StatusTag } from '../../components/StatusTag'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -99,7 +100,7 @@ export const WithdrawalList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1100 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1100 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Создан" width={140} render={(v: string) => dt(v)} />
         <Table.Column
           dataIndex="status"
@@ -150,7 +151,7 @@ export const WithdrawalList = () => {
             <Button size="small" icon={<EditOutlined />} title="Изменить статус" onClick={() => open(r)} />
           )}
         />
-      </Table>
+      </DataTable>
 
       <DangerConfirm
         open={!!editing}

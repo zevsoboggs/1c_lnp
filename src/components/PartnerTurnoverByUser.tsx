@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Table, Typography, Tag, Alert, Spin } from 'antd'
 import { action } from '../api/actions'
 import { money, usdt } from '../lib/format'
+import { DataTable } from './DataTable'
 
 const { Text } = Typography
 
@@ -124,7 +125,7 @@ export function PartnerTurnoverByUser({
           message="Показаны не все счета — сузьте период"
         />
       )}
-      <Table
+      <DataTable
         dataSource={rows}
         rowKey="userId"
         size="small"
@@ -164,7 +165,7 @@ export function PartnerTurnoverByUser({
           sorter={(a: UserRow, b: UserRow) => a.amount - b.amount}
           render={(v: number) => <Text strong>{fmt(v)}</Text>}
         />
-      </Table>
+      </DataTable>
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { SecretOnce } from '../../components/SecretOnce'
 import { PartnerForm } from './PartnerForm'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -139,7 +140,7 @@ export const PartnerList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1150 }} onRow={onRow}>
         <Table.Column
           dataIndex="name"
           title="Название"
@@ -203,7 +204,7 @@ export const PartnerList = () => {
             </Space>
           )}
         />
-      </Table>
+      </DataTable>
 
       <PartnerForm
         open={!!form}

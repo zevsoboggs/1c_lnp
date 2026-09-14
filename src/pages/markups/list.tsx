@@ -10,6 +10,7 @@ import { Field } from '../../components/Field'
 import { Toolbar } from '../../components/Toolbar'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -99,7 +100,7 @@ export const MarkupList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 900 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 900 }} onRow={onRow}>
         <Table.Column dataIndex="name" title="Имя" width={180} render={(v: string) => v ?? '—'} />
         <Table.Column dataIndex="email" title="Email" width={230} />
         <Table.Column
@@ -187,7 +188,7 @@ export const MarkupList = () => {
             )
           }
         />
-      </Table>
+      </DataTable>
     </List>
   )
 }

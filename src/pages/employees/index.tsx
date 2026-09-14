@@ -21,6 +21,7 @@ import { DangerConfirm } from '../../components/DangerAction'
 import { useRowMenu } from '../../components/useRowMenu'
 import { employeesApi, type Employee } from '../../api/employees'
 import { canWrite } from '../../api/accessControl'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -122,7 +123,7 @@ export const Employees = () => {
             Активных: {active.length}
           </Text>
         </Toolbar>
-        <Table
+        <DataTable
           dataSource={rows}
           loading={q.isFetching}
           rowKey="id"
@@ -195,7 +196,7 @@ export const Employees = () => {
               )}
             />
           )}
-        </Table>
+        </DataTable>
       </Card>
 
       <Modal

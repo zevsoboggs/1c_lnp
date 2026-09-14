@@ -26,6 +26,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { LogRangePicker } from '../../components/LogRangePicker'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -221,7 +222,7 @@ export const ApiLogList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1200 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1200 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Когда" width={140} render={(v: string) => dt(v)} />
         <Table.Column
           dataIndex="method"
@@ -286,7 +287,7 @@ export const ApiLogList = () => {
             />
           )}
         />
-      </Table>
+      </DataTable>
 
       <Drawer open={!!viewing} onClose={() => setViewing(null)} title="Запись API-лога" width={860}>
         {detail.isFetching && <Spin />}

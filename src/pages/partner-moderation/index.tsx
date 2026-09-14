@@ -26,6 +26,7 @@ import { DangerConfirm } from '../../components/DangerAction'
 import { TERMINAL_PROVIDERS, options } from '../../lib/apiEnums'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -176,7 +177,7 @@ export const PartnerModerationPage = () => {
       <Card size="small">
         <Toolbar total={rows.length} loading={query.isFetching} onRefresh={() => query.refetch()} />
 
-        <Table
+        <DataTable
           dataSource={rows}
           loading={query.isFetching}
           rowKey="id"
@@ -263,7 +264,7 @@ export const PartnerModerationPage = () => {
               )
             }
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <Modal

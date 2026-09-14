@@ -23,6 +23,7 @@ import { useRowMenu } from '../../components/useRowMenu'
 import { adminApi, LEVELS, type Role } from '../../api/adminUsers'
 import { canWrite } from '../../api/accessControl'
 import type { Level, Section } from '../../api/authProvider'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -131,7 +132,7 @@ export const AdminRoles = () => {
       >
         <Toolbar total={roles.length} loading={q.isFetching} onRefresh={() => q.refetch()} />
 
-        <Table
+        <DataTable
           dataSource={roles}
           loading={q.isFetching}
           rowKey="id"
@@ -197,7 +198,7 @@ export const AdminRoles = () => {
               )}
             />
           )}
-        </Table>
+        </DataTable>
       </Card>
 
       <Modal

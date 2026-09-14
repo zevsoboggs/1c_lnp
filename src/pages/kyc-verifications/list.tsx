@@ -30,6 +30,7 @@ import { StatusTag } from '../../components/StatusTag'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
 import { canWrite } from '../../api/accessControl'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -242,7 +243,7 @@ export const KycVerificationList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1250 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1250 }} onRow={onRow}>
         <Table.Column dataIndex="createdAt" title="Создана" width={140} render={(x: string) => dt(x)} />
         <Table.Column
           dataIndex="status"
@@ -322,7 +323,7 @@ export const KycVerificationList = () => {
             />
           )}
         />
-      </Table>
+      </DataTable>
 
       <Drawer
         open={!!viewing}

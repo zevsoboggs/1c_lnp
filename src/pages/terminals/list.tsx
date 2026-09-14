@@ -13,6 +13,7 @@ import { TerminalForm } from './TerminalForm'
 import { action } from '../../api/actions'
 import { TERMINAL_PROVIDERS, options } from '../../lib/apiEnums'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -133,7 +134,7 @@ export const TerminalList = () => {
 
       {menu}
 
-      <Table {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
+      <DataTable {...tableProps} rowKey="id" size="small" scroll={{ x: 1000 }} onRow={onRow}>
         <Table.Column
           dataIndex="provider"
           title="Провайдер"
@@ -213,7 +214,7 @@ export const TerminalList = () => {
             </Space>
           )}
         />
-      </Table>
+      </DataTable>
 
       <TerminalForm
         open={!!form}

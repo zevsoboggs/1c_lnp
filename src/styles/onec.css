@@ -238,14 +238,90 @@ h4.ant-typography {
     max-width: 100vw;
   }
 
-  /* Таблицы прокручиваются вбок, но строки не должны обрезать значение
-     до нечитаемого — на телефоне лимит ниже. */
+  /* На телефоне строка — карточка, поэтому снимаем десктопную обрезку в одну
+     строку: иначе всё содержимое схлопнется в многоточие. */
   .ant-table-small .ant-table-tbody > tr > td {
-    max-width: 200px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+    padding: 10px 12px;
+  }
+
+  /* Дровер на всю ширину: карточки верификации/счёта задают 640–860 px. */
+  .ant-drawer-content-wrapper {
+    width: 100% !important;
+  }
+  .ant-drawer-body {
+    padding: 12px;
+  }
+
+  /* Модалка во всю ширину и не выше экрана — длинные формы прокручиваются. */
+  .ant-modal {
+    top: 8px;
+    padding-bottom: 8px;
+  }
+  .ant-modal-body {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+  }
+
+  /* Подтверждения и выпадашки не шире экрана. */
+  .ant-popover,
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-picker-dropdown {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Календарь-диапазон в одну панель — две рядом не помещаются. */
+  .ant-picker-panels {
+    flex-direction: column;
   }
 
   /* Крупные цифры сводок уменьшаем, иначе переносятся по слогам. */
   .ant-statistic-content {
     font-size: 18px;
   }
+}
+
+/* ── Строка-карточка на телефоне (см. components/DataTable.tsx) ───────────── */
+.onec-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.onec-card-row__head {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.onec-card-row__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+/* Ячейка «растворяется», чтобы подпись и значение встали в общую сетку и
+   значения выровнялись по правому краю столбиком. */
+.onec-card-row__cell {
+  display: contents;
+}
+.onec-card-row__label {
+  color: #71717a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.onec-card-row__value {
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.onec-card-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f2f2f4;
 }

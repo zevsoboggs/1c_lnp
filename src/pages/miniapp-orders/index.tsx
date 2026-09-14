@@ -28,6 +28,7 @@ import {
   ORDER_CATEGORIES,
   type Order,
 } from '../../api/miniapp'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -174,7 +175,7 @@ export const MiniappOrders = () => {
       <Card size="small">
         <Toolbar total={q.data?.total} loading={q.isFetching} onRefresh={() => q.refetch()} />
 
-        <Table
+        <DataTable
           dataSource={rows}
           loading={q.isFetching}
           rowKey="id"
@@ -274,7 +275,7 @@ export const MiniappOrders = () => {
               <Button size="small" icon={<EyeOutlined />} onClick={() => setViewing(r)} />
             )}
           />
-        </Table>
+        </DataTable>
       </Card>
 
       <Drawer open={!!viewing} onClose={() => setViewing(null)} title="Заказ" width={720}>

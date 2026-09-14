@@ -9,6 +9,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { DangerConfirm } from '../../components/DangerAction'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
@@ -101,7 +102,7 @@ export const ReferralOverrideList = () => {
       <Toolbar total={rows.length} loading={query.isFetching} onRefresh={() => query.refetch()} />
       {menu}
 
-      <Table
+      <DataTable
         dataSource={rows}
         loading={query.isFetching}
         rowKey="id"
@@ -162,7 +163,7 @@ export const ReferralOverrideList = () => {
             />
           )}
         />
-      </Table>
+      </DataTable>
 
       <Modal
         open={open}
