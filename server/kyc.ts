@@ -31,6 +31,56 @@ kyc.get('/config', requireSection('kyc-verifications'), (_req, res) => {
   res.json({ success: true, enabled: Boolean(DIDIT_API_KEY), statuses: DECIDABLE_KYC_STATUSES })
 })
 
+/**
+ * Свежие ссылки на медиа.
+ *
+ * admin-api отдаёт media из сохранённого ответа провайдера, а это подписанные
+ * ссылки S3 со сроком жизни 4 часа — на старых проверках они давно протухли
+ * (S3 отвечает 403 «Request has expired»), и в карточке были битые картинки.
+ * Поэтому дёргаем у Didit решение заново: он каждый раз подписывает ссылки
+ * заново.
+ */
+kyc.get('/:sessionId/media', requireSection('kyc-verifications'), async (req, res) => {
+  try {
+    if (!DIDIT_API_KEY) {
+      return res.status(503).json({ success: false, error: 'DIDIT_API_KEY не задан', code: 'NOT_CONFIGURED' })
+    }
+    const r = await fetch(`${DIDIT_BASE_URL}/v2/session/${req.params.sessionId}/decision/`, {
+      headers: { 'x-api-key': DIDIT_API_KEY },
+      signal: AbortSignal.timeout(30_000),
+    })
+    const body: any = await r.json().catch(() => null)
+    if (!r.ok) {
+      return res
+        .status(r.status)
+        .json({ success: false, error: body?.detail || `Didit ответил ${r.status}` })
+    }
+
+    const idv = body?.id_verification ?? {}
+    const fm = body?.face_match ?? {}
+    const lv = body?.liveness ?? {}
+    // Имена оставляем как у admin-api — подписи под фото в интерфейсе те же.
+    const candidates: Record<string, unknown> = {
+      portrait_image: idv.portrait_image,
+      document_front: idv.front_image,
+      document_back: idv.back_image,
+      document_video: idv.front_video,
+      document_back_video: idv.back_video,
+      face_match_source: fm.source_image,
+      face_match_target: fm.target_image,
+      liveness_photo: lv.reference_image,
+      liveness_video: lv.video_url,
+    }
+    const media: Record<string, string> = {}
+    for (const [k, v] of Object.entries(candidates)) {
+      if (typeof v === 'string' && /^https?:\/\//.test(v)) media[k] = v
+    }
+    res.json({ success: true, media, status: body?.status ?? null })
+  } catch (e: any) {
+    res.status(502).json({ success: false, error: e.message })
+  }
+})
+
 kyc.post('/:sessionId/decision', requireSection('kyc-verifications', 'write'), async (req, res) => {
   try {
     if (!DIDIT_API_KEY) {

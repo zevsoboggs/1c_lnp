@@ -99,7 +99,25 @@ export const KycVerificationList = () => {
   })
 
   const v = detail.data?.verification
-  const media = detail.data?.media
+
+  // Медиа берём напрямую у провайдера: admin-api отдаёт ссылки из сохранённого
+  // ответа, а они подписаны на 4 часа и на старых проверках уже протухли
+  // (S3 → 403 «Request has expired», в карточке были битые картинки).
+  const mediaQ = useQuery({
+    queryKey: ['kyc-media', v?.verificationId],
+    queryFn: async () => {
+      const r = await fetch(`/api/kyc/${v.verificationId}/media`)
+      const b = await r.json().catch(() => null)
+      if (!r.ok || b?.success === false) throw new Error(b?.error ?? `Ошибка ${r.status}`)
+      return b as { media: Record<string, string> }
+    },
+    enabled: !!v?.verificationId,
+    staleTime: 60_000,
+    retry: 0,
+  })
+
+  // Если провайдер недоступен — показываем хотя бы то, что отдал admin-api.
+  const media = mediaQ.data?.media ?? detail.data?.media
 
   // Включена ли ручная модерация (задан ли ключ Didit на сервере).
   const cfg = useQuery({
@@ -312,11 +330,20 @@ export const KycVerificationList = () => {
         title="Карточка верификации"
         width={860}
       >
-        {detail.isFetching && (
+        {(detail.isFetching || mediaQ.isFetching) && (
           <Space style={{ marginBottom: 12 }}>
             <Spin size="small" />
             <Text type="secondary">Запрашиваем свежие ссылки на медиа у провайдера…</Text>
           </Space>
+        )}
+        {mediaQ.isError && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Не удалось получить свежие ссылки на медиа"
+            description={(mediaQ.error as Error)?.message}
+          />
         )}
         {detail.isError && (
           <Alert
@@ -434,7 +461,7 @@ export const KycVerificationList = () => {
               </Card>
             )}
 
-            {!images.length && !videos.length && !detail.isFetching && (
+            {!images.length && !videos.length && !detail.isFetching && !mediaQ.isFetching && (
               <Alert type="info" showIcon message="Медиа по этой верификации провайдер не отдал" />
             )}
           </Space>
