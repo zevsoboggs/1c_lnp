@@ -43,12 +43,13 @@ export function LoginPage() {
         padding: 20,
       }}
     >
-      <div style={{ width: 620, border: '1px solid #d9d9d9', background: '#fff' }}>
+      {/* Ширины — потолок, а не фиксатор: на телефоне окно ужимается по экрану. */}
+      <div style={{ width: '100%', maxWidth: 620, border: '1px solid #d9d9d9', background: '#fff' }}>
         {/* Сетчатый фон — как в оригинальном окне запуска 1С. */}
         <div
           style={{
             position: 'relative',
-            padding: '56px 24px',
+            padding: 'clamp(24px, 6vw, 56px) clamp(12px, 4vw, 24px)',
             backgroundColor: '#fdfdfd',
             backgroundImage: `
               radial-gradient(circle at 18% 30%, #e8e8e8 3px, transparent 3px),
@@ -64,7 +65,8 @@ export function LoginPage() {
         >
           <div
             style={{
-              width: 440,
+              width: '100%',
+              maxWidth: 440,
               margin: '0 auto',
               background: '#fff',
               border: '1px solid #c9c9c9',
