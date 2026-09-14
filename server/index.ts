@@ -11,6 +11,7 @@ import { adminUsers } from './adminUsers.js'
 import { employees, migrateEmployees } from './employees.js'
 import { salary, migrateSalary } from './salary.js'
 import { kyc } from './kyc.js'
+import { esim } from './esim.js'
 import { migrateAuth } from './authSchema.js'
 
 const app = express()
@@ -42,6 +43,9 @@ app.use('/api/salary', salary)
 // Ручная модерация KYC (решения уходят в Didit). Право kyc-verifications
 // проверяется внутри роутера.
 app.use('/api/kyc', kyc)
+
+// eSIM: ходим напрямую к Yesim — в новом admin-api модуля нет.
+app.use('/api/esim', esim)
 
 // requireSection на весь роутер: PAN/CVV и движение денег по картам должны
 // быть закрыты правом vcc, а не только фактом входа. GET — чтение, остальное —

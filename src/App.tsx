@@ -37,6 +37,7 @@ import {
   BarChartOutlined,
   HomeOutlined,
   ContactsOutlined,
+  GlobalOutlined,
   BookOutlined,
   MoneyCollectOutlined,
 } from '@ant-design/icons'
@@ -84,6 +85,7 @@ import { MiniappBroadcast } from './pages/miniapp-broadcast'
 import { MiniappReferrals } from './pages/miniapp-referrals'
 import { MiniappMaintenance } from './pages/miniapp-maintenance'
 import { MiniappBalances } from './pages/miniapp-balances'
+import { EsimPage } from './pages/esim'
 import { Reports } from './pages/reports'
 
 export default function App() {
@@ -233,6 +235,11 @@ export default function App() {
                 list: '/webhooks',
                 meta: { label: 'Вебхуки', icon: <ApiOutlined /> },
               },
+              {
+                name: 'esim',
+                list: '/esim',
+                meta: { label: 'eSIM', icon: <GlobalOutlined /> },
+              },
               // ── Мини-апп ─────────────────────────────────────────────
               { name: 'miniapp', meta: { label: 'Мини-апп', icon: <MobileOutlined /> } },
               {
@@ -339,6 +346,7 @@ export default function App() {
                 <Route path="/miniapp-maintenance" element={<MiniappMaintenance />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/webhooks" element={<WebhookList />} />
+                <Route path="/esim" element={<EsimPage />} />
                 <Route path="/terminals" element={<TerminalList />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/salary-rates" element={<SalaryRates />} />

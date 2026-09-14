@@ -91,6 +91,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'audit-logs', label: 'Аудит действий', group: 'Журналы' },
   { key: 'kyc-verifications', label: 'KYC: верификации', group: 'KYC' },
   { key: 'kyc-billing', label: 'KYC: биллинг', group: 'KYC' },
+  { key: 'esim', label: 'eSIM', group: 'Прочее' },
   { key: 'miniapp-orders', label: 'Мини-апп: заказы', group: 'Мини-апп' },
   { key: 'miniapp-users', label: 'Мини-апп: пользователи', group: 'Мини-апп' },
   { key: 'miniapp-referrals', label: 'Мини-апп: рефералка', group: 'Мини-апп' },

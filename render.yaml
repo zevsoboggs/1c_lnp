@@ -46,6 +46,17 @@ services:
         sync: false # ключ Didit, тот же что в loveandpay.io
       - key: DIDIT_BASE_URL
         value: https://verification.didit.me
+      # eSIM (Yesim): Partner API + веб-кабинет CORE для остатка средств.
+      - key: YESIM_API_TOKEN
+        sync: false
+      - key: YESIM_API_URL
+        value: https://partners-api.yesim.biz
+      - key: YESIM_CORE_LOGIN
+        sync: false
+      - key: YESIM_CORE_PASSWORD
+        sync: false
+      - key: YESIM_CORE_URL
+        value: https://core.yesim.biz
       # Первый пароль администратора при первом старте (иначе печатается в лог).
       - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false
