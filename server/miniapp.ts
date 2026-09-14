@@ -119,14 +119,19 @@ miniapp.post('/maintenance', async (req, res) => {
 })
 
 /**
- * Мастер-счёт: деньги платформы.
- *  - masterWallet — кошелёк TRON, с которого уходят выплаты (USDT + TRX на газ);
- *  - sbpProviderFloat — остаток на счёте у СБП-провайдера;
- *  - userInternalBalanceRubTotal — сколько суммарно должны пользователям.
+ * Мастер-счёт: только кошелёк, с которого уходят выплаты, и его баланс USDT.
+ *
+ * Апстрим в этом же ответе отдаёт остаток у СБП-провайдера и сумму внутренних
+ * балансов пользователей — их сюда намеренно не пробрасываем, в разделе нужен
+ * только мастер-кошелёк.
  */
 miniapp.get('/balances', async (_req, res) => {
   try {
-    res.json({ success: true, ...(await call('/api/admin/dashboard/balances')) })
+    const data = await call<{ masterWallet?: { address?: string; usdt?: number; error?: string } }>(
+      '/api/admin/dashboard/balances',
+    )
+    const w = data.masterWallet ?? {}
+    res.json({ success: true, address: w.address ?? null, usdt: w.usdt ?? null, error: w.error ?? null })
   } catch (e: any) {
     res.status(e.status ?? 502).json({ success: false, error: e.message })
   }
