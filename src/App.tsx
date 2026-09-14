@@ -83,6 +83,7 @@ import { MiniappUsers } from './pages/miniapp-users'
 import { MiniappBroadcast } from './pages/miniapp-broadcast'
 import { MiniappReferrals } from './pages/miniapp-referrals'
 import { MiniappMaintenance } from './pages/miniapp-maintenance'
+import { MiniappBalances } from './pages/miniapp-balances'
 import { Reports } from './pages/reports'
 
 export default function App() {
@@ -255,6 +256,11 @@ export default function App() {
                 meta: { label: 'Рассылки', parent: 'miniapp', icon: <SoundOutlined /> },
               },
               {
+                name: 'miniapp-balances',
+                list: '/miniapp-balances',
+                meta: { label: 'Мастер-счёт', parent: 'miniapp', icon: <WalletOutlined /> },
+              },
+              {
                 name: 'miniapp-maintenance',
                 list: '/miniapp-maintenance',
                 meta: { label: 'Техработы', parent: 'miniapp', icon: <ToolOutlined /> },
@@ -329,6 +335,7 @@ export default function App() {
                 <Route path="/miniapp-users" element={<MiniappUsers />} />
                 <Route path="/miniapp-referrals" element={<MiniappReferrals />} />
                 <Route path="/miniapp-broadcast" element={<MiniappBroadcast />} />
+                <Route path="/miniapp-balances" element={<MiniappBalances />} />
                 <Route path="/miniapp-maintenance" element={<MiniappMaintenance />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/webhooks" element={<WebhookList />} />

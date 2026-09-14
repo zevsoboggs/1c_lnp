@@ -118,6 +118,20 @@ miniapp.post('/maintenance', async (req, res) => {
   }
 })
 
+/**
+ * Мастер-счёт: деньги платформы.
+ *  - masterWallet — кошелёк TRON, с которого уходят выплаты (USDT + TRX на газ);
+ *  - sbpProviderFloat — остаток на счёте у СБП-провайдера;
+ *  - userInternalBalanceRubTotal — сколько суммарно должны пользователям.
+ */
+miniapp.get('/balances', async (_req, res) => {
+  try {
+    res.json({ success: true, ...(await call('/api/admin/dashboard/balances')) })
+  } catch (e: any) {
+    res.status(e.status ?? 502).json({ success: false, error: e.message })
+  }
+})
+
 /** Агрегаты реферальной программы. Детализации в апстриме нет. */
 miniapp.get('/referrals', async (_req, res) => {
   try {

@@ -100,6 +100,7 @@ function miniappGate(req: Request, res: Response, next: NextFunction) {
     overview: 'miniapp-orders',
     broadcast: 'miniapp-broadcast',
     maintenance: 'miniapp-maintenance',
+    balances: 'miniapp-balances',
   }
   const section = map[seg]
   if (!section) return res.status(403).json({ success: false, error: 'Неизвестный раздел' })

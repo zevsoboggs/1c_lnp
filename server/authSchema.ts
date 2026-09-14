@@ -96,6 +96,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'miniapp-referrals', label: 'Мини-апп: рефералка', group: 'Мини-апп' },
   { key: 'miniapp-broadcast', label: 'Мини-апп: рассылки', group: 'Мини-апп' },
   { key: 'miniapp-maintenance', label: 'Мини-апп: техработы', group: 'Мини-апп' },
+  { key: 'miniapp-balances', label: 'Мини-апп: мастер-счёт', group: 'Мини-апп' },
   { key: 'employees', label: 'Сотрудники', group: 'Справочники' },
   { key: 'salary-rates', label: 'Ставки', group: 'Справочники' },
   { key: 'partner-rates', label: 'Проценты партнёров', group: 'Справочники' },
