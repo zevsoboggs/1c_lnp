@@ -10,6 +10,7 @@ import { auth, requireAuth, requireSection, writeAudit } from './auth.js'
 import { adminUsers } from './adminUsers.js'
 import { employees, migrateEmployees } from './employees.js'
 import { salary, migrateSalary } from './salary.js'
+import { kyc } from './kyc.js'
 import { migrateAuth } from './authSchema.js'
 
 const app = express()
@@ -37,6 +38,10 @@ app.use('/api/employees', employees)
 // Зарплата: ставки, назначения партнёрам и зарплатные листы. Разные права
 // (salary-rates / partner-rates / salary) проверяются внутри роутера.
 app.use('/api/salary', salary)
+
+// Ручная модерация KYC (решения уходят в Didit). Право kyc-verifications
+// проверяется внутри роутера.
+app.use('/api/kyc', kyc)
 
 // requireSection на весь роутер: PAN/CVV и движение денег по картам должны
 // быть закрыты правом vcc, а не только фактом входа. GET — чтение, остальное —

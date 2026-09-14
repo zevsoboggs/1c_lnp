@@ -41,6 +41,11 @@ services:
         value: https://api.rapira.net/market/symbol-thumb
       - key: KYC_BILLING_CONFIRM_CODE
         sync: false # СМЕНИТЬ на свой, не дефолтный из исходников
+      # Didit — ручная модерация KYC из 1С (approve/decline).
+      - key: DIDIT_API_KEY
+        sync: false # ключ Didit, тот же что в loveandpay.io
+      - key: DIDIT_BASE_URL
+        value: https://verification.didit.me
       # Первый пароль администратора при первом старте (иначе печатается в лог).
       - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false

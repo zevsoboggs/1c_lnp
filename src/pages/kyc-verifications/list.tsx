@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { List, useTable } from '@refinedev/antd'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Table,
   Select,
@@ -16,8 +16,10 @@ import {
   Alert,
   DatePicker,
   Spin,
+  App,
+  Popconfirm,
 } from 'antd'
-import { EyeOutlined } from '@ant-design/icons'
+import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import type { CrudFilters } from '@refinedev/core'
 import dayjs from 'dayjs'
 import { dt } from '../../lib/format'
@@ -27,17 +29,37 @@ import { Toolbar } from '../../components/Toolbar'
 import { StatusTag } from '../../components/StatusTag'
 import { action } from '../../api/actions'
 import { useRowMenu } from '../../components/useRowMenu'
+import { canWrite } from '../../api/accessControl'
 
 const { Text } = Typography
 
+// Значения ровно как у admin-api: раньше в списке были DECLINED/IN_REVIEW,
+// которых провайдер не присылает, — из-за этого «на модерации» не фильтровалось.
 const KYC_STATUS = [
-  ['APPROVED', 'Одобрена', 'success'],
-  ['DECLINED', 'Отклонена', 'error'],
+  ['NOT_STARTED', 'Не начата', 'default'],
+  ['IN_PROGRESS', 'В процессе', 'processing'],
   ['PENDING', 'Ожидает', 'processing'],
-  ['IN_REVIEW', 'На проверке', 'blue'],
+  ['MANUAL_REVIEW', 'Ручная проверка', 'warning'],
+  ['APPROVED', 'Одобрена', 'success'],
+  ['REJECTED', 'Отклонена', 'error'],
+  ['DECLINED', 'Отклонена', 'error'],
   ['EXPIRED', 'Истекла', 'default'],
   ['ABANDONED', 'Брошена', 'default'],
 ].map(([value, label, color]) => ({ value, label, color }))
+
+/** Из этих статусов Didit принимает ручное решение. */
+const DECIDABLE = ['PENDING', 'IN_PROGRESS', 'MANUAL_REVIEW', 'NOT_STARTED']
+
+async function postDecision(sessionId: string, decision: 'Approved' | 'Declined', comment: string) {
+  const res = await fetch(`/api/kyc/${sessionId}/decision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision, comment: comment || undefined }),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok || body?.success === false) throw new Error(body?.error ?? `Ошибка ${res.status}`)
+  return body
+}
 
 const score = (v: number | null, good = 80) =>
   v == null ? (
@@ -49,7 +71,10 @@ const score = (v: number | null, good = 80) =>
   )
 
 export const KycVerificationList = () => {
+  const { message } = App.useApp()
   const [viewing, setViewing] = useState<any>(null)
+  const [comment, setComment] = useState('')
+  const canDecide = canWrite('kyc-verifications')
 
   const { tableProps, filters, setFilters, tableQuery } = useTable({
     resource: 'kyc-verifications',
@@ -76,6 +101,34 @@ export const KycVerificationList = () => {
   const v = detail.data?.verification
   const media = detail.data?.media
 
+  // Включена ли ручная модерация (задан ли ключ Didit на сервере).
+  const cfg = useQuery({
+    queryKey: ['kyc-config'],
+    queryFn: async () => {
+      const r = await fetch('/api/kyc/config')
+      return (await r.json()) as { enabled?: boolean }
+    },
+    staleTime: 300_000,
+  })
+
+  const decide = useMutation({
+    mutationFn: (decision: 'Approved' | 'Declined') =>
+      postDecision(v.verificationId, decision, comment),
+    onSuccess: (_d, decision) => {
+      setComment('')
+      message.success(
+        decision === 'Approved'
+          ? 'Одобрено — решение отправлено в Didit'
+          : 'Отклонено — решение отправлено в Didit',
+      )
+      detail.refetch()
+      tableQuery.refetch()
+    },
+    onError: (e: Error) => message.error(e.message, 8),
+  })
+
+  const decidable = !!v && DECIDABLE.includes(v.status) && !!v.verificationId
+
   const images: Array<{ src: string; label: string }> = []
   if (media && typeof media === 'object') {
     for (const [k, val] of Object.entries(media as Record<string, unknown>)) {
@@ -92,7 +145,7 @@ export const KycVerificationList = () => {
   }
 
   const { onRow, menu } = useRowMenu<any>((r) => [
-    { key: 'open', label: 'Открыть карточку', onClick: () => setViewing(r) },
+    { key: 'open', label: 'Открыть карточку', onClick: () => { setComment(''); setViewing(r) } },
     { type: 'divider' },
     r.status && {
       key: 'st',
@@ -244,7 +297,10 @@ export const KycVerificationList = () => {
               size="small"
               icon={<EyeOutlined />}
               title="Открыть карточку"
-              onClick={() => setViewing(r)}
+              onClick={() => {
+                setComment('')
+                setViewing(r)
+              }}
             />
           )}
         />
@@ -274,6 +330,54 @@ export const KycVerificationList = () => {
 
         {v && (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            {decidable && canDecide && cfg.data?.enabled !== false && (
+              <Card size="small" title="Решение по верификации" style={{ background: '#fffbe6' }}>
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Решение уходит провайдеру (Didit). Статус проверки в списке обновится, когда
+                    придёт вебхук — обычно в течение минуты.
+                  </Text>
+                  <Input.TextArea
+                    rows={2}
+                    placeholder="Комментарий (необязательно) — попадёт в Didit и в журнал"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                  />
+                  <Space>
+                    <Popconfirm
+                      title="Одобрить верификацию?"
+                      okText="Одобрить"
+                      cancelText="Отмена"
+                      onConfirm={() => decide.mutate('Approved')}
+                    >
+                      <Button type="primary" icon={<CheckOutlined />} loading={decide.isPending}>
+                        Одобрить
+                      </Button>
+                    </Popconfirm>
+                    <Popconfirm
+                      title="Отклонить верификацию?"
+                      okText="Отклонить"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Отмена"
+                      onConfirm={() => decide.mutate('Declined')}
+                    >
+                      <Button danger icon={<CloseOutlined />} loading={decide.isPending}>
+                        Отклонить
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                </Space>
+              </Card>
+            )}
+
+            {!!v && !decidable && (
+              <Alert
+                type="info"
+                showIcon
+                message={`Решение уже принято или недоступно для статуса «${v.status}»`}
+              />
+            )}
+
             <Descriptions
               size="small"
               column={2}
