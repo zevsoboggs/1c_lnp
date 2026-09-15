@@ -37,6 +37,7 @@ export const TERMINAL_PROVIDERS = [
   'KANYON',
   'PAYSIDO',
   'STYKPAY',
+  'PAYASSIST',
   'ALTYN',
   'IPT_DBS',
   'OVERPAY',

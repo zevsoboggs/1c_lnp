@@ -5,6 +5,9 @@ import { TERMINAL_PROVIDERS, options } from '../../lib/apiEnums'
 
 const { Text } = Typography
 
+/** keyId → key_id: admin-api принимает оба написания, в базе бывают разные. */
+const snakeOf = (name: string) => name.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
+
 /**
  * Терминал = назначение провайдера партнёру.
  *
@@ -23,14 +26,54 @@ const { Text } = Typography
  * открытии всегда пустые: пусто означает «не менять».
  */
 
+type CredentialField = {
+  name: string
+  label: string
+  /** Секреты API отдаёт замаскированными — поле всегда открывается пустым. */
+  secret?: boolean
+  hint?: string
+  /** Выбор из фиксированного набора: значение уходит в config как есть. */
+  options?: Array<{ value: string; label: string }>
+}
+
 /** Реквизиты, которые форма умеет заполнять, по провайдерам. */
-const CREDENTIAL_FIELDS: Record<string, Array<{ name: string; label: string; secret?: boolean; hint?: string }>> = {
+const CREDENTIAL_FIELDS: Record<string, CredentialField[]> = {
   PAYSIDO: [
     { name: 'secret', label: 'Секретный ключ', secret: true },
   ],
   STYKPAY: [
     { name: 'keyId', label: 'Идентификатор ключа (keyId)', hint: 'ak_live_… боевой, ak_test_… тестовый' },
     { name: 'secret', label: 'Секретный ключ', secret: true, hint: 'Целиком, вместе с приставкой sk_live_' },
+    { name: 'apiUrl', label: 'Адрес API', hint: 'Пусто — общий адрес платформы' },
+  ],
+  PAYASSIST: [
+    { name: 'clientId', label: 'Client ID' },
+    { name: 'clientSecret', label: 'Client Secret', secret: true },
+    {
+      name: 'paySource',
+      label: 'Способ оплаты',
+      hint: 'Чем платит клиент на странице провайдера',
+      options: [
+        { value: 'sbp', label: 'СБП' },
+        { value: 'card', label: 'Банковская карта' },
+      ],
+    },
+    {
+      name: 'cTo',
+      label: 'Код зачисления (c_to)',
+      hint: 'Тикер выдаёт менеджер провайдера под проект. Без него счёт уйдёт не туда',
+    },
+    {
+      name: 'cFrom',
+      label: 'Код реквизита плательщика (c_from)',
+      hint: 'Код банка по справочнику bestchange; пусто — CARDRUB',
+    },
+    {
+      name: 'signatureSecret',
+      label: 'Секрет подписи уведомлений',
+      secret: true,
+      hint: 'Им провайдер заверяет вебхуки об оплате',
+    },
     { name: 'apiUrl', label: 'Адрес API', hint: 'Пусто — общий адрес платформы' },
   ],
 }
@@ -78,9 +121,13 @@ export function TerminalForm({
         isActive: initial.isActive,
         priority: initial.priority,
         tspId: cfg.tspId,
-        // Не секреты подставляем как есть, секреты — никогда.
-        keyId: cfg.keyId ?? cfg.key_id,
-        apiUrl: cfg.apiUrl ?? cfg.api_url,
+        // Не секреты подставляем как есть, секреты — никогда: API отдаёт их
+        // замаскированными, и вернуть маску значило бы затереть настоящий ключ.
+        ...Object.fromEntries(
+          (CREDENTIAL_FIELDS[initial.provider] ?? [])
+            .filter((field) => !field.secret)
+            .map((field) => [field.name, cfg[field.name] ?? cfg[snakeOf(field.name)]]),
+        ),
       })
       setProvider(initial.provider)
       setDirect(cfg.mode === 'direct' || cfg.tspId != null)
@@ -98,26 +145,28 @@ export function TerminalForm({
   /** Что уже задано у терминала — по замаскированному ответу API. */
   const configured = (name: string) => {
     const cfg = initial?.config ?? {}
-    const value = cfg[name] ?? cfg[name.replace(/[A-Z]/g, (c: string) => '_' + c.toLowerCase())]
+    const value = cfg[name] ?? cfg[snakeOf(name)]
     return value !== undefined && value !== null && value !== ''
   }
 
   const submit = async () => {
     const v = await form.validateFields()
-    const { tspId, keyId, secret, apiUrl, ...rest } = v
+    const { tspId, ...rest } = v
 
     // Пустые поля не отправляем: на PATCH admin-api дописывает присланные
-    // ключи к текущим, поэтому пропуск поля means «оставить как есть».
+    // ключи к текущим, поэтому пропуск поля означает «оставить как есть».
     const config: Record<string, unknown> = {}
     if (kanyonDirect) {
       config.mode = 'direct'
       config.tspId = Number(tspId)
     }
     for (const field of credentials) {
-      const value = { keyId, secret, apiUrl }[field.name as 'keyId' | 'secret' | 'apiUrl']
+      const value = rest[field.name]
       if (typeof value === 'string' && value.trim() !== '') {
         config[field.name] = value.trim()
       }
+      // Реквизиты живут в config, а не рядом с ним: наружу их не отправляем.
+      delete rest[field.name]
     }
 
     const hasConfig = Object.keys(config).length > 0
@@ -235,7 +284,13 @@ export function TerminalForm({
                     : field.hint
                 }
               >
-                {field.secret ? <Input.Password autoComplete="new-password" /> : <Input />}
+                {field.options ? (
+                  <Select options={field.options} placeholder="Не выбрано" allowClear />
+                ) : field.secret ? (
+                  <Input.Password autoComplete="new-password" />
+                ) : (
+                  <Input />
+                )}
               </Form.Item>
             ))}
           </>
