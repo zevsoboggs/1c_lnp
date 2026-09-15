@@ -17,6 +17,11 @@ import { DataTable } from '../../components/DataTable'
 
 const { Text } = Typography
 
+/**
+ * В фильтре — все значения enum: терминалы старых провайдеров в базе есть, и
+ * отбирать их надо. В форме назначения список другой, из ответа API: назначить
+ * можно только того, через кого платформа проводит платежи.
+ */
 const PROVIDERS = options(TERMINAL_PROVIDERS)
 
 export const TerminalList = () => {
@@ -63,6 +68,9 @@ export const TerminalList = () => {
       message.error(e.message)
     },
   })
+
+  // dataProvider прокидывает providers рядом со списком — своего запроса не нужно.
+  const assignable = (tableQuery.data as any)?.providers as string[] | undefined
 
   const valueOf = (field: string) =>
     (filters as CrudFilters)?.find((f) => 'field' in f && f.field === field)?.value
@@ -155,8 +163,8 @@ export const TerminalList = () => {
         />
         {/* У KANYON в config лежит tspId — он же код терминала на стороне провайдера. */}
         <Table.Column
-          title="tspId / config"
-          width={170}
+          title="tspId / реквизиты"
+          width={190}
           render={(_: unknown, r: any) => {
             const cfg = r.config ?? {}
             if (cfg.tspId != null) {
@@ -167,8 +175,17 @@ export const TerminalList = () => {
                 </Space>
               )
             }
-            const keys = Object.keys(cfg)
-            return keys.length ? <Text type="secondary">{keys.join(', ')}</Text> : '—'
+            // Свой ключ у терминала — не мелочь: партнёр расчётно отделён от
+            // общего договора платформы. Показываем это, а не список полей.
+            const own = ['secret', 'secret_key', 'keyId', 'key_id'].some((k) => cfg[k])
+            const rest = Object.keys(cfg).filter((k) => k !== 'label')
+            if (!rest.length) return <Text type="secondary">общие ключи</Text>
+            return (
+              <Space size={4} wrap>
+                {own && <Tag color="purple">свои ключи</Tag>}
+                <Text type="secondary" style={{ fontSize: 12 }}>{rest.join(', ')}</Text>
+              </Space>
+            )
           }}
         />
         <Table.Column
@@ -220,6 +237,7 @@ export const TerminalList = () => {
         open={!!form}
         mode={form?.mode ?? 'create'}
         initial={form?.row}
+        providers={assignable}
         loading={create.isPending || update.isPending}
         onCancel={() => setForm(null)}
         onSubmit={(v) =>

@@ -8,14 +8,38 @@ const { Text } = Typography
 /**
  * Терминал = назначение провайдера партнёру.
  *
- * KANYON в режиме direct требует числовой config.tspId и merchantId (имя
- * терминала) — бэкенд это проверяет только на POST, но не на PATCH, поэтому
- * форма держит правило сама в обоих режимах.
+ * У каждого провайдера свои реквизиты, и лежат они в config:
+ *
+ *   KANYON  — числовой tspId и имя терминала (merchantId) в режиме direct;
+ *   PAYSIDO — merchantId и secret;
+ *   STYKPAY — keyId и secret, при необходимости свой apiUrl.
+ *
+ * Реквизиты необязательны: без них терминал работает на общих ключах из
+ * окружения платформы. Свои нужны, когда у партнёра договор с провайдером
+ * собственный.
+ *
+ * Секреты API наружу отдаёт замаскированными («••••b839»). Отправлять маску
+ * обратно нельзя — она затрёт настоящий ключ, поэтому поля секретов при
+ * открытии всегда пустые: пусто означает «не менять».
  */
+
+/** Реквизиты, которые форма умеет заполнять, по провайдерам. */
+const CREDENTIAL_FIELDS: Record<string, Array<{ name: string; label: string; secret?: boolean; hint?: string }>> = {
+  PAYSIDO: [
+    { name: 'secret', label: 'Секретный ключ', secret: true },
+  ],
+  STYKPAY: [
+    { name: 'keyId', label: 'Идентификатор ключа (keyId)', hint: 'ak_live_… боевой, ak_test_… тестовый' },
+    { name: 'secret', label: 'Секретный ключ', secret: true, hint: 'Целиком, вместе с приставкой sk_live_' },
+    { name: 'apiUrl', label: 'Адрес API', hint: 'Пусто — общий адрес платформы' },
+  ],
+}
+
 export function TerminalForm({
   open,
   mode,
   initial,
+  providers,
   loading,
   onSubmit,
   onCancel,
@@ -23,6 +47,8 @@ export function TerminalForm({
   open: boolean
   mode: 'create' | 'edit'
   initial?: any
+  /** Провайдеры, которые платформа умеет проводить; приходят из API. */
+  providers?: string[]
   loading?: boolean
   onSubmit: (values: Record<string, unknown>) => void
   onCancel: () => void
@@ -38,6 +64,9 @@ export function TerminalForm({
     pagination: { pageSize: 200 },
   })
 
+  // Пока список не пришёл, показываем значения enum — иначе выбор пуст.
+  const assignable = providers?.length ? providers : [...TERMINAL_PROVIDERS]
+
   useEffect(() => {
     if (!open) return
     form.resetFields()
@@ -49,33 +78,59 @@ export function TerminalForm({
         isActive: initial.isActive,
         priority: initial.priority,
         tspId: cfg.tspId,
+        // Не секреты подставляем как есть, секреты — никогда.
+        keyId: cfg.keyId ?? cfg.key_id,
+        apiUrl: cfg.apiUrl ?? cfg.api_url,
       })
       setProvider(initial.provider)
       setDirect(cfg.mode === 'direct' || cfg.tspId != null)
     } else {
-      setProvider('KANYON')
+      setProvider(assignable.includes('KANYON') ? 'KANYON' : assignable[0])
       setDirect(true)
     }
+    // assignable пересобирается на каждый рендер — в зависимости не берём.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, mode, form])
 
   const kanyonDirect = provider === 'KANYON' && direct
+  const credentials = CREDENTIAL_FIELDS[provider] ?? []
+
+  /** Что уже задано у терминала — по замаскированному ответу API. */
+  const configured = (name: string) => {
+    const cfg = initial?.config ?? {}
+    const value = cfg[name] ?? cfg[name.replace(/[A-Z]/g, (c: string) => '_' + c.toLowerCase())]
+    return value !== undefined && value !== null && value !== ''
+  }
 
   const submit = async () => {
     const v = await form.validateFields()
-    const { tspId, ...rest } = v
+    const { tspId, keyId, secret, apiUrl, ...rest } = v
 
-    // config заменяется целиком, а не мержится — собираем его явно.
-    const config = kanyonDirect ? { mode: 'direct', tspId: Number(tspId) } : undefined
+    // Пустые поля не отправляем: на PATCH admin-api дописывает присланные
+    // ключи к текущим, поэтому пропуск поля means «оставить как есть».
+    const config: Record<string, unknown> = {}
+    if (kanyonDirect) {
+      config.mode = 'direct'
+      config.tspId = Number(tspId)
+    }
+    for (const field of credentials) {
+      const value = { keyId, secret, apiUrl }[field.name as 'keyId' | 'secret' | 'apiUrl']
+      if (typeof value === 'string' && value.trim() !== '') {
+        config[field.name] = value.trim()
+      }
+    }
+
+    const hasConfig = Object.keys(config).length > 0
 
     if (mode === 'create') {
       onSubmit({
         ...rest,
         provider,
-        config,
+        config: hasConfig ? config : undefined,
         priority: rest.priority ?? 0,
       })
     } else {
-      onSubmit({ ...rest, ...(config ? { config } : {}) })
+      onSubmit({ ...rest, ...(hasConfig ? { config } : {}) })
     }
   }
 
@@ -115,8 +170,12 @@ export function TerminalForm({
                 }
               />
             </Form.Item>
-            <Form.Item label="Провайдер" required>
-              <Select value={provider} onChange={setProvider} options={options(TERMINAL_PROVIDERS)} />
+            <Form.Item
+              label="Провайдер"
+              required
+              extra="Перечислены только те, через кого платформа проводит платежи сейчас."
+            >
+              <Select value={provider} onChange={setProvider} options={options(assignable)} />
             </Form.Item>
           </>
         )}
@@ -155,6 +214,32 @@ export function TerminalForm({
         >
           <Input />
         </Form.Item>
+
+        {credentials.length > 0 && (
+          <>
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={`Свои реквизиты ${provider}`}
+              description="Нужны, только если у партнёра собственный договор с провайдером. Пусто — терминал работает на общих ключах платформы."
+            />
+            {credentials.map((field) => (
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                extra={
+                  field.secret && mode === 'edit' && configured(field.name)
+                    ? 'Ключ задан. Пусто — оставить прежний.'
+                    : field.hint
+                }
+              >
+                {field.secret ? <Input.Password autoComplete="new-password" /> : <Input />}
+              </Form.Item>
+            ))}
+          </>
+        )}
 
         <Form.Item name="priority" label="Приоритет" initialValue={0}>
           <InputNumber style={{ width: '100%' }} />

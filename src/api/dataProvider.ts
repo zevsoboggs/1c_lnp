@@ -78,7 +78,13 @@ export const dataProvider: DataProvider = {
     // Часть ответов несёт сводку рядом со списком (api-logs, invoices, payouts).
     // Refine её не ждёт, но и не мешает — прокидываем, иначе пришлось бы
     // делать второй запрос ради тех же цифр.
-    const extra = body.stats ? { stats: body.stats } : {}
+    const extra = {
+      ...(body.stats ? { stats: body.stats } : {}),
+      // Терминалы отдают рядом со списком перечень провайдеров, которые
+      // платформа умеет проводить прямо сейчас. Свой список здесь держать
+      // нельзя: он отстаёт при каждом новом шлюзе.
+      ...(body.providers ? { providers: body.providers as string[] } : {}),
+    }
 
     if (spec.paginated) {
       return { data, total: body.pagination?.total ?? data.length, ...extra }
