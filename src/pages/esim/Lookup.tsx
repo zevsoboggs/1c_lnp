@@ -1,58 +1,68 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
-  Alert, Button, Card, Collapse, Descriptions, Empty, Input, Space, Table, Tag, Typography,
+  Alert, Button, Card, Collapse, Descriptions, Empty, Input, Progress, Space, Table, Tag, Typography,
 } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { dt } from '../../lib/format'
 
 const { Text, Paragraph } = Typography
 
+/** Ответ /api/admin/support/esim/:reference — имена сверены с живым ответом. */
 type Support = {
-  reference: string
-  /** Сходится ли наша запись с тем, что показывает провайдер. */
-  matchesOurRecord: boolean
-  owner?: {
-    telegramId?: number | string
-    username?: string | null
-    kycStatus?: string | null
+  esim: {
+    reference: string
+    iccid: string
+    status: string
+    planName: string | null
+    activePlanId: string | null
+    planActivatedAt: string | null
+    planExpiredAt: string | null
+    qrCode: string | null
+    createdAt: string
+  }
+  user: {
+    id: string
+    telegramUserId: number | string
+    username: string | null
+    firstName: string | null
+    kycStatus: string | null
   } | null
-  esim?: {
-    iccid?: string
-    status?: string
-    tariff?: string
-    country?: string
-    createdAt?: string
-    activatedAt?: string | null
-    expiresAt?: string | null
-    qr?: string | null
+  provider: {
+    activePlanId: string | null
+    planActivatedAt: string | null
+    planExpiredAt: string | null
+    statusQr: string | null
+    dataPackageMb: number | null
+    dataUsedMb: number | null
+    dataLeftMb: number | null
+    /** Сходится ли наша запись с тем, что показывает провайдер. */
+    matchesOurRecord: boolean
   } | null
-  provider?: {
-    active?: boolean
-    tariff?: string | null
-    trafficLeft?: string | number | null
-    expiresAt?: string | null
-  } | null
-  payments?: Array<{
-    id?: string
-    amount?: number | string
-    currency?: string
-    method?: string
-    status?: string
-    createdAt?: string
-    refunded?: boolean
+  payments: Array<{
+    id: string
+    createdAt: string
+    type: string
+    status: string
+    amount: number
+    currency: string
+    description: string | null
+    iccid: string | null
   }>
 }
+
+const gb = (mb: number | null | undefined) =>
+  mb === null || mb === undefined ? '—' : `${(mb / 1024).toFixed(2)} ГБ`
 
 /**
  * Поиск eSIM по короткому номеру.
  *
- * Номер вида ES-XNRR3S клиент называет по телефону, поэтому принимаем его в
+ * Номер вида ES-GLUXFG клиент называет по телефону, поэтому принимаем его в
  * любом написании — приводит к одному виду сервер.
  *
- * Главное здесь — строка расхождения. Случай, когда у нас симка числится
- *активной с тарифом, а у провайдера тарифа нет, раньше разбирали вручную по
- * полчаса. Теперь он виден первым, до того как оператор начнёт читать поля.
+ * Первым идёт признак расхождения с провайдером: случай «у нас числится
+ * активной с тарифом, а у провайдера тарифа нет» раньше разбирали вручную по
+ * полчаса, ради него поиск и делался.
  */
 export function EsimLookup() {
   const [value, setValue] = useState('')
@@ -82,7 +92,7 @@ export function EsimLookup() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onPressEnter={search}
-            placeholder="ES-XNRR3S"
+            placeholder="ES-GLUXFG"
             allowClear
             autoFocus
           />
@@ -91,13 +101,11 @@ export function EsimLookup() {
           </Button>
         </Space.Compact>
         <Paragraph type="secondary" style={{ fontSize: 12, margin: '8px 0 0' }}>
-          Номер можно вводить как угодно: ES-XNRR3S, es-xnrr3s или просто XNRR3S.
+          Номер можно вводить как угодно: ES-GLUXFG, es-gluxfg или просто GLUXFG.
         </Paragraph>
       </Card>
 
-      {find.isError && (
-        <Alert type="error" showIcon message={(find.error as Error).message} />
-      )}
+      {find.isError && <Alert type="error" showIcon message={(find.error as Error).message} />}
 
       {!find.isPending && !find.isError && !data && (
         <Empty description="Введите номер eSIM — он есть у клиента в мини-аппе" />
@@ -105,113 +113,157 @@ export function EsimLookup() {
 
       {data && (
         <>
-          {/* Расхождение показываем первым: ради него поиск и делался. */}
+          {/* Ради этой строки поиск и делался, поэтому она первая. */}
           <Alert
-            type={data.matchesOurRecord ? 'success' : 'error'}
+            type={data.provider?.matchesOurRecord ? 'success' : 'error'}
             showIcon
             message={
-              data.matchesOurRecord
-                ? 'Наша запись сходится с провайдером'
-                : 'Расхождение: наша запись и состояние у провайдера не совпадают'
+              data.provider == null
+                ? 'Провайдер не ответил — сверить состояние не с чем'
+                : data.provider.matchesOurRecord
+                  ? 'Наша запись сходится с провайдером'
+                  : 'Расхождение: наша запись и состояние у провайдера не совпадают'
             }
             description={
-              data.matchesOurRecord
-                ? undefined
-                : 'Обычно это значит, что у нас тариф числится, а у провайдера его нет. Сверьте поля ниже.'
+              data.provider != null && !data.provider.matchesOurRecord
+                ? 'Обычно это значит, что у нас тариф числится, а у провайдера его нет. Сверьте тариф и даты ниже.'
+                : undefined
             }
           />
 
-          <Card size="small" title={`eSIM ${data.reference}`}>
+          <Card size="small" title={`eSIM ${data.esim.reference}`}>
             <Descriptions size="small" column={1} bordered>
               <Descriptions.Item label="ICCID">
-                {data.esim?.iccid ? <Text copyable>{data.esim.iccid}</Text> : '—'}
+                <Text copyable>{data.esim.iccid}</Text>
               </Descriptions.Item>
               <Descriptions.Item label="Статус у нас">
-                {data.esim?.status ? <Tag>{data.esim.status}</Tag> : '—'}
+                <Tag color={data.esim.status === 'ACTIVE' ? 'success' : undefined}>
+                  {data.esim.status}
+                </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Тариф">{data.esim?.tariff ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Страна">{data.esim?.country ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Куплена">{dt(data.esim?.createdAt)}</Descriptions.Item>
-              <Descriptions.Item label="Активирована">
-                {data.esim?.activatedAt ? dt(data.esim.activatedAt) : '—'}
+              <Descriptions.Item label="Тариф">{data.esim.planName ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Куплена">{dt(data.esim.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label="Тариф активирован">
+                {data.esim.planActivatedAt ? dt(data.esim.planActivatedAt) : '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Действует до">
-                {data.esim?.expiresAt ? dt(data.esim.expiresAt) : '—'}
+              <Descriptions.Item label="Тариф истёк">
+                {data.esim.planExpiredAt ? dt(data.esim.planExpiredAt) : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="QR для установки">
+                {data.esim.qrCode ? <Text copyable code>{data.esim.qrCode}</Text> : '—'}
               </Descriptions.Item>
             </Descriptions>
           </Card>
 
           <Card size="small" title="Что показывает провайдер">
-            <Descriptions size="small" column={1} bordered>
-              <Descriptions.Item label="Тариф активен">
-                <Tag color={data.provider?.active ? 'success' : 'error'}>
-                  {data.provider?.active ? 'да' : 'нет'}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Тариф">{data.provider?.tariff ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Остаток трафика">
-                {data.provider?.trafficLeft ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Срок">
-                {data.provider?.expiresAt ? dt(data.provider.expiresAt) : '—'}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-
-          <Card size="small" title="Владелец">
-            <Descriptions size="small" column={1} bordered>
-              <Descriptions.Item label="Telegram ID">
-                {data.owner?.telegramId ? (
-                  <Text copyable>{String(data.owner.telegramId)}</Text>
-                ) : (
-                  '—'
+            {data.provider ? (
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {/* Трафик — то, ради чего клиент обычно и звонит. */}
+                {data.provider.dataPackageMb != null && (
+                  <div>
+                    <Progress
+                      percent={Math.round(
+                        ((data.provider.dataUsedMb ?? 0) / data.provider.dataPackageMb) * 100,
+                      )}
+                      size="small"
+                      status="normal"
+                    />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Осталось {gb(data.provider.dataLeftMb)} из {gb(data.provider.dataPackageMb)}
+                      {' · израсходовано '}
+                      {gb(data.provider.dataUsedMb)}
+                    </Text>
+                  </div>
                 )}
-              </Descriptions.Item>
-              <Descriptions.Item label="Username">
-                {data.owner?.username ? `@${data.owner.username}` : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="KYC">
-                {data.owner?.kycStatus ? <Tag>{data.owner.kycStatus}</Tag> : '—'}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-
-          <Card size="small" title={`Платежи · ${data.payments?.length ?? 0}`}>
-            {data.payments && data.payments.length > 0 ? (
-              <Table
-                dataSource={data.payments}
-                rowKey={(r, i) => r.id ?? String(i)}
-                size="small"
-                pagination={false}
-                columns={[
-                  { title: 'Дата', dataIndex: 'createdAt', render: (v: string) => dt(v), width: 150 },
-                  {
-                    title: 'Сумма',
-                    width: 120,
-                    render: (_: unknown, r) =>
-                      r.amount === undefined ? '—' : `${r.amount} ${r.currency ?? ''}`.trim(),
-                  },
-                  { title: 'Способ', dataIndex: 'method', width: 130 },
-                  {
-                    title: 'Статус',
-                    width: 140,
-                    render: (_: unknown, r) => (
-                      <Space size={4}>
-                        {r.status && <Tag>{r.status}</Tag>}
-                        {r.refunded && <Tag color="orange">возврат</Tag>}
-                      </Space>
-                    ),
-                  },
-                ]}
-              />
+                <Descriptions size="small" column={1} bordered>
+                  <Descriptions.Item label="Состояние QR">
+                    {data.provider.statusQr ?? '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Тариф у провайдера">
+                    {data.provider.activePlanId ? (
+                      <Text code copyable>{data.provider.activePlanId}</Text>
+                    ) : (
+                      <Text type="danger">не найден</Text>
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Активирован">
+                    {data.provider.planActivatedAt ? dt(data.provider.planActivatedAt) : '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Истекает">
+                    {data.provider.planExpiredAt ? dt(data.provider.planExpiredAt) : '—'}
+                  </Descriptions.Item>
+                </Descriptions>
+              </Space>
             ) : (
-              <Text type="secondary">Платежей по этой симке нет</Text>
+              <Text type="secondary">Провайдер не ответил</Text>
             )}
           </Card>
 
-          {/* Ответ целиком. Поля выше разложены по названиям, о которых мы
-              договорились; если сервис вернёт что-то ещё или назовёт иначе,
-              оператор всё равно увидит данные, а не прочерки. */}
+          <Card size="small" title="Владелец">
+            {data.user ? (
+              <Descriptions size="small" column={1} bordered>
+                <Descriptions.Item label="Имя">{data.user.firstName ?? '—'}</Descriptions.Item>
+                <Descriptions.Item label="Telegram">
+                  {data.user.username ? `@${data.user.username}` : '—'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Telegram ID">
+                  <Text copyable>{String(data.user.telegramUserId)}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="KYC">
+                  <Tag color={data.user.kycStatus === 'APPROVED' ? 'success' : 'warning'}>
+                    {data.user.kycStatus ?? '—'}
+                  </Tag>
+                </Descriptions.Item>
+              </Descriptions>
+            ) : (
+              <Text type="secondary">Владелец не найден</Text>
+            )}
+          </Card>
+
+          <Card
+            size="small"
+            title={`Платежи покупателя · ${data.payments?.length ?? 0}`}
+            extra={
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                выделены относящиеся к этой eSIM
+              </Text>
+            }
+          >
+            {data.payments?.length ? (
+              <Table
+                dataSource={data.payments}
+                rowKey="id"
+                size="small"
+                pagination={data.payments.length > 10 ? { pageSize: 10 } : false}
+                // Список приходит по всему покупателю, а не по одной симке:
+                // помечаем свои, чтобы оператор не искал их глазами по ICCID.
+                rowClassName={(r) => (r.iccid === data.esim.iccid ? 'onec-row-accent' : '')}
+                columns={[
+                  { title: 'Дата', dataIndex: 'createdAt', width: 150, render: (v: string) => dt(v) },
+                  {
+                    title: 'Сумма',
+                    width: 110,
+                    align: 'right',
+                    render: (_: unknown, r) => `${r.amount} ${r.currency}`,
+                  },
+                  {
+                    title: 'Статус',
+                    width: 190,
+                    render: (_: unknown, r) => (
+                      <Space size={4} wrap>
+                        <Tag color={r.status === 'COMPLETED' ? 'success' : undefined}>{r.status}</Tag>
+                        {r.type?.includes('REFUND') && <Tag color="orange">возврат</Tag>}
+                      </Space>
+                    ),
+                  },
+                  { title: 'Назначение', dataIndex: 'description', render: (v: string) => v ?? '—' },
+                ]}
+              />
+            ) : (
+              <Text type="secondary">Платежей нет</Text>
+            )}
+          </Card>
+
           <Collapse
             size="small"
             items={[

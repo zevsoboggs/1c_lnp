@@ -807,3 +807,13 @@ h4.ant-typography {
     font-size: 18px;
   }
 }
+
+/* Строка, относящаяся к тому, что оператор сейчас смотрит (платёж по этой
+   eSIM в списке всех платежей покупателя). Не статус, а «вот оно» — поэтому
+   подсветка нейтральная, а не цветом успеха или тревоги. */
+.onec-row-accent > td {
+  background: #f4f8ff;
+}
+.ant-table-tbody > tr.onec-row-accent:hover > td {
+  background: #e9f1fd !important;
+}
