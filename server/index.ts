@@ -577,10 +577,34 @@ if (process.env.SERVE_CLIENT === '1') {
   const path = await import('node:path')
   const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 
-  app.use(express.static(dist))
+  // Файлы сборки названы по содержимому, поэтому кешируются навсегда: новая
+  // сборка — новое имя. index.html, наоборот, перечитывается каждый раз, иначе
+  // браузер продолжит просить файлы прошлой сборки.
+  app.use(
+    express.static(dist, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache')
+        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+        }
+      },
+    }),
+  )
+
   // SPA-fallback: любой НЕ-API GET отдаёт index.html, дальше рулит React Router.
   // Идёт последним, поэтому /api и /admin-api сюда уже не попадают.
-  app.get(/^(?!\/(api|admin-api)\/).*/, (_req, res) => {
+  app.get(/^(?!\/(api|admin-api)\/).*/, (req, res) => {
+    // Но не для файлов сборки. Запрос к /assets/index-СТАРЫЙ.css возникает,
+    // когда у браузера остался index.html прошлой сборки; отдать на него
+    // index.html значит скормить HTML вместо стилей — страница молча
+    // отрисуется без оформления, и причину не найти. Честный 404 заставляет
+    // браузер перечитать index.html и взять актуальные файлы.
+    if (req.path.startsWith('/assets/')) {
+      return res.status(404).type('text/plain').send('Not found')
+    }
+
+    res.setHeader('Cache-Control', 'no-cache')
     res.sendFile(path.join(dist, 'index.html'))
   })
 }
