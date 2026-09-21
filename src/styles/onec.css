@@ -274,13 +274,19 @@ h4.ant-typography {
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin: calc(env(safe-area-inset-top, 0px) + 8px) 8px 0;
-  padding: 6px 8px 6px 4px;
-  background: #fcf6d8;
-  border: 1px solid #e8dcae;
+  padding: 5px 6px;
+  /* Белая, а не жёлтая. Жёлтый — цвет панели разделов; на телефоне панели нет,
+     и жёлтая полоса читалась как случайная заливка, а не как часть набора
+     карточек. Непрозрачная: под шапкой проезжает таблица. */
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
   border-radius: 14px;
   box-shadow: var(--onec-shadow);
+}
+.onec-topbar .ant-btn {
+  border-radius: 10px;
 }
 .onec-topbar__spacer {
   flex: 1;
@@ -299,12 +305,57 @@ h4.ant-typography {
   padding: 8px;
   /* Запас снизу: нижнее меню плавает над содержимым, и без него последняя
      строка таблицы оказывается под ним. */
-  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
+/* На телефоне область документа рамку не рисует.
+   Иначе получается коробка в коробке: моя карточка, внутри карточка списка от
+   Refine, внутри карточка фильтров, внутри полоса тулбара — четыре рамки и
+   четыре отступа на 360 px ширины. Здесь карточками работают сами блоки
+   страницы, а контейнер только раздаёт им промежутки. */
 .onec-content--mobile {
-  padding: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Внешняя карточка страницы (её рисует List из Refine) рамку не держит: она
+   здесь и есть страница. Целимся в прямого потомка контейнера — так селектор
+   не зависит от того, во что именно Refine заворачивает содержимое. */
+.onec-content--mobile > .ant-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.onec-content--mobile > .ant-card > .ant-card-head {
+  padding-inline: 4px;
+  border-bottom: 0;
+  min-height: 0;
+}
+.onec-content--mobile > .ant-card > .ant-card-body {
+  padding: 0;
+}
+
+/* Блоки внутри страницы — фильтры, тулбар, список — становятся отдельными
+   карточками с одинаковым промежутком. */
+.onec-content--mobile .ant-card .ant-card,
+.onec-shell--mobile .onec-toolbar,
+.onec-shell--mobile .ant-table-wrapper {
   border-radius: 14px;
+}
+.onec-shell--mobile .ant-table-wrapper {
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
+  box-shadow: var(--onec-shadow);
+  overflow: hidden;
+}
+.onec-shell--mobile .onec-toolbar {
+  box-shadow: var(--onec-shadow);
+  background: #ffffff;
 }
 
 /* ── Нижнее меню ──────────────────────────────────────────────────────────── */
@@ -323,11 +374,9 @@ h4.ant-typography {
   align-items: stretch;
   gap: 2px;
   padding: 6px;
-  background: rgba(255, 255, 255, 0.92);
-  /* Подложка размывается: под меню проезжает таблица, и без этого цифры
-     просвечивают сквозь полупрозрачный фон. */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Непрозрачный фон. Полупрозрачный с размытием выглядел нарядно, но сквозь
+     него читались строки таблицы, и меню сливалось с данными. */
+  background: #ffffff;
   border: 1px solid var(--onec-border);
   border-radius: 18px;
   box-shadow: 0 2px 6px rgba(16, 24, 40, 0.06), 0 10px 28px rgba(16, 24, 40, 0.12);
@@ -414,22 +463,47 @@ h4.ant-typography {
     padding: 10px 12px;
   }
 
-  /* Описания (карточки счёта, верификации) — в столбик: пара «подпись/значение»
-     в две колонки на узком экране нечитаема. */
+  /* Описания (карточка транзакции, счёта, верификации).
+     Две колонки на узком экране нечитаемы, но и стопка «серая полоса с
+     подписью — строка со значением» плоха: каждое поле занимает две строки с
+     заливкой, и карточка из пятнадцати полей превращается в длинную ленту.
+     Делаем плотный список: мелкая серая подпись, под ней значение, тонкая
+     линия между полями и никаких заливок. */
   .ant-descriptions-view table,
   .ant-descriptions-view tbody,
   .ant-descriptions-row {
     display: block;
     width: 100%;
   }
+  .ant-descriptions-view {
+    border: 0 !important;
+  }
+  .ant-descriptions-row {
+    border-bottom: 1px solid #f2f2f4;
+  }
+  .ant-descriptions-row:last-child {
+    border-bottom: 0;
+  }
   .ant-descriptions-item-label,
   .ant-descriptions-item-content {
     display: block !important;
     width: auto !important;
+    border: 0 !important;
   }
   .ant-descriptions-bordered .ant-descriptions-item-label {
-    font-weight: 600;
-    border-bottom: none;
+    /* Подпись — служебная: мелкая, серая, без фона. */
+    background: transparent !important;
+    color: #8b8b93 !important;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+    padding: 8px 12px 0 !important;
+  }
+  .ant-descriptions-bordered .ant-descriptions-item-content {
+    padding: 1px 12px 9px !important;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
 
   /* Модалки почти во весь экран — иначе форма ужимается в узкую колонку. */
@@ -461,14 +535,59 @@ h4.ant-typography {
     padding: 12px;
   }
 
-  /* Модалка во всю ширину и не выше экрана — длинные формы прокручиваются. */
+  /* Модалка во всю ширину и не выше экрана — длинные формы прокручиваются.
+     dvh вместо vh: с vh нижний край уезжает под адресную строку браузера, и
+     кнопки «Сохранить» не видно. */
   .ant-modal {
     top: 8px;
     padding-bottom: 8px;
   }
+  .ant-modal-content {
+    border-radius: 16px;
+  }
   .ant-modal-body {
-    max-height: calc(100vh - 160px);
+    max-height: calc(100dvh - 190px);
     overflow-y: auto;
+  }
+  /* Кнопки окна прибиты к низу: в длинной форме до них иначе не домотать. */
+  .ant-modal-footer {
+    position: sticky;
+    bottom: 0;
+    margin: 0;
+    padding-top: 12px;
+    background: #ffffff;
+    border-top: 1px solid #f2f2f4;
+  }
+  .ant-modal-footer .ant-btn {
+    height: 40px;
+    flex: 1;
+  }
+  .ant-modal-footer > * {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Поля формы крупнее: в 24 px высоты пальцем не попасть. */
+  .ant-modal .ant-input,
+  .ant-modal .ant-input-affix-wrapper,
+  .ant-modal .ant-input-number,
+  .ant-modal .ant-picker,
+  .ant-drawer .ant-input,
+  .ant-drawer .ant-input-affix-wrapper {
+    min-height: 38px;
+  }
+  .ant-modal .ant-select-single .ant-select-selector,
+  .ant-drawer .ant-select-single .ant-select-selector {
+    height: 38px !important;
+  }
+  .ant-modal .ant-form-item {
+    margin-bottom: 14px;
+  }
+
+  /* Шапка шторки — как у карточек: заголовок слева, действие справа. */
+  .ant-drawer-header {
+    padding: 12px;
+    border-bottom: 1px solid #f2f2f4;
   }
 
   /* Подтверждения и выпадашки не шире экрана. */
@@ -494,7 +613,7 @@ h4.ant-typography {
 .onec-card-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .onec-card-row__head {
   font-size: 14px;
@@ -505,8 +624,14 @@ h4.ant-typography {
 .onec-card-row__grid {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 12px;
+  gap: 5px 12px;
   align-items: baseline;
+}
+/* Название записи отделяем от её полей — иначе в списке из десяти строк
+   глазу не за что зацепиться, всё сливается в сплошной столбец. */
+.onec-card-row__head {
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f2f2f4;
 }
 /* Ячейка «растворяется», чтобы подпись и значение встали в общую сетку и
    значения выровнялись по правому краю столбиком. */
