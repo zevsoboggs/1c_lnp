@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Layout as AntLayout, Menu, Drawer, Button, Grid } from 'antd'
-import { MenuOutlined } from '@ant-design/icons'
+import { Menu, Drawer, Button, Grid } from 'antd'
+import {
+  MenuOutlined, HomeOutlined, SwapOutlined, FileTextOutlined, ApartmentOutlined,
+} from '@ant-design/icons'
 import { useMenu } from '@refinedev/core'
 import type { TreeMenuItem } from '@refinedev/core'
 import { Link, useLocation } from 'react-router'
@@ -8,21 +10,28 @@ import type { ReactNode } from 'react'
 import { Brand } from './Brand'
 import { UserMenu } from './UserMenu'
 import { TabsBar } from './TabsBar'
+import { BottomNav, type NavItem } from './BottomNav'
 import { getMe } from '../api/authProvider'
 import { C1 } from '../theme'
 
 const SIDER_WIDTH = 240
 
+/**
+ * Разделы нижнего меню телефона — то, чем пользуются каждый день.
+ * Остальное открывается кнопкой «Ещё».
+ */
+const MOBILE_NAV: NavItem[] = [
+  { key: 'home', path: '/', label: 'Главная', icon: <HomeOutlined /> },
+  { key: 'transactions', path: '/transactions', label: 'Платежи', icon: <SwapOutlined /> },
+  { key: 'invoices', path: '/invoices', label: 'Инвойсы', icon: <FileTextOutlined /> },
+  { key: 'partners', path: '/partners', label: 'Партнёры', icon: <ApartmentOutlined /> },
+]
+
 /** Ресурс без своего маршрута — это группа: у неё нет ссылки, только дети. */
 function toMenuItem(item: TreeMenuItem): any {
   const children = item.children ?? []
   if (children.length > 0) {
-    return {
-      key: item.key,
-      icon: item.icon,
-      label: item.label,
-      children: children.map(toMenuItem),
-    }
+    return { key: item.key, icon: item.icon, label: item.label, children: children.map(toMenuItem) }
   }
   return {
     key: item.key,
@@ -51,11 +60,16 @@ function visibleMenu(items: TreeMenuItem[]): TreeMenuItem[] {
 }
 
 /**
- * Свой layout вместо ThemedLayout.
+ * Оболочка приложения.
  *
- * На десктопе — неподвижная панель разделов, как в 1С. На телефоне она бы
- * съела весь экран, поэтому там меню уезжает в выдвижную шторку, а сверху
- * остаётся компактная шапка с гамбургером — привычное поведение приложения.
+ * Вся «мебель» — панель разделов, шапка, подвал, нижнее меню — сделана
+ * плавающими карточками с отступом от краёв и скруглением. Смысл не только в
+ * виде: отступ отделяет служебные элементы от содержимого, и взгляд перестаёт
+ * путать край окна с краем таблицы.
+ *
+ * На телефоне панель разделов заняла бы весь экран, поэтому там она уезжает в
+ * шторку, снизу появляется постоянное меню с главными разделами, а содержимое
+ * получает запас снизу, чтобы меню ничего не перекрывало.
  */
 export function Layout({ children }: { children: ReactNode }) {
   const { menuItems, selectedKey, defaultOpenKeys } = useMenu()
@@ -85,8 +99,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
   if (isMobile) {
     return (
-      <AntLayout style={{ minHeight: '100vh', background: C1.appBg }}>
-        <div className="onec-mobile-bar">
+      <div className="onec-shell onec-shell--mobile">
+        <header className="onec-topbar">
           <Button
             type="text"
             aria-label="Меню"
@@ -94,15 +108,20 @@ export function Layout({ children }: { children: ReactNode }) {
             onClick={() => setDrawerOpen(true)}
           />
           <Brand compact />
-        </div>
+          <div className="onec-topbar__spacer" />
+          <UserMenu compact />
+        </header>
 
         <Drawer
           placement="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          width={276}
+          width={288}
           closable={false}
-          styles={{ body: { padding: 0, background: C1.sidebarBg, display: 'flex', flexDirection: 'column' } }}
+          className="onec-drawer"
+          styles={{
+            body: { padding: 0, background: C1.sidebarBg, display: 'flex', flexDirection: 'column' },
+          }}
         >
           <Brand />
           <div className="onec-sider" style={{ flex: 1, overflowY: 'auto' }}>
@@ -113,51 +132,42 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </Drawer>
 
-        <AntLayout.Content style={{ padding: 8 }}>
+        <main className="onec-main">
           <div className="onec-content onec-content--mobile">{children}</div>
-        </AntLayout.Content>
-      </AntLayout>
+        </main>
+
+        <BottomNav items={MOBILE_NAV} onMore={() => setDrawerOpen(true)} moreActive={drawerOpen} />
+      </div>
     )
   }
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
-      <AntLayout.Sider
-        width={SIDER_WIDTH}
-        theme="light"
-        className="onec-sider"
-        style={{
-          background: C1.sidebarBg,
-          borderInlineEnd: `1px solid ${C1.sidebarBorder}`,
-          position: 'fixed',
-          insetInlineStart: 0,
-          top: 0,
-          bottom: 0,
-          height: '100vh',
-          overflowY: 'auto',
-          zIndex: 10,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+    <div className="onec-shell">
+      <aside className="onec-aside" style={{ width: SIDER_WIDTH }}>
         <Brand />
-        <div style={{ flex: 1 }}>{menu}</div>
-        <div style={{ borderTop: `1px solid ${C1.sidebarBorder}` }}>
+        <div className="onec-sider onec-aside__menu">{menu}</div>
+        <div className="onec-aside__foot">
           <UserMenu />
         </div>
-      </AntLayout.Sider>
+      </aside>
 
-      <AntLayout style={{ marginInlineStart: SIDER_WIDTH, background: C1.appBg }}>
-        {/* Строка вкладок открытых разделов — прибита к верху, как в 1С. */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+      <div className="onec-column">
+        {/* Шапка: вкладки открытых разделов — примета 1С. Плавает отдельной
+            карточкой, чтобы не сливаться с таблицей под ней. */}
+        <header className="onec-header">
           <TabsBar />
-        </div>
-        {/* Контент — белая карточка на светло-сером фоне, как область документа
-            в новом UI 1С 8.5 (стили в .onec-content). */}
-        <AntLayout.Content style={{ padding: '0 16px 16px' }}>
+        </header>
+
+        <main className="onec-main">
           <div className="onec-content">{children}</div>
-        </AntLayout.Content>
-      </AntLayout>
-    </AntLayout>
+        </main>
+
+        <footer className="onec-footer">
+          <span>Love&Pay — Админка</span>
+          <span className="onec-footer__dot">·</span>
+          <span>© {new Date().getFullYear()}</span>
+        </footer>
+      </div>
+    </div>
   )
 }

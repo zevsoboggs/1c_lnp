@@ -100,9 +100,11 @@ export function TabsBar() {
         display: 'flex',
         alignItems: 'center',
         gap: 4,
-        padding: '6px 16px',
+        padding: '6px 10px',
         overflowX: 'auto',
-        background: C1.appBg,
+        /* Фон задаёт плавающая шапка вокруг — своим полоса рисовала бы
+           заплатку другого цвета внутри белой карточки. */
+        background: 'transparent',
       }}
     >
       {tab({ key: '__home', label: 'Начало', path: HOME }, false)}

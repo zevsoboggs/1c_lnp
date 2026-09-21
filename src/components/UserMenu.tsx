@@ -7,8 +7,13 @@ import { adminApi } from '../api/adminUsers'
 
 const { Text } = Typography
 
-/** Кто вошёл, смена своего пароля и выход — внизу сайдбара. */
-export function UserMenu() {
+/**
+ * Кто вошёл, смена своего пароля и выход.
+ *
+ * compact — для шапки телефона: там места на подпись нет, остаётся кружок
+ * с инициалом, по которому открывается то же меню.
+ */
+export function UserMenu({ compact = false }: { compact?: boolean } = {}) {
   const { message } = App.useApp()
   const { mutate: logout } = useLogout()
   const { data: me } = useGetIdentity<{ name: string; role?: string }>()
@@ -46,26 +51,32 @@ export function UserMenu() {
           ],
         }}
       >
-        <div
-          style={{
-            padding: '8px 12px',
-            cursor: 'pointer',
-            borderTop: '1px solid #E8DCAE',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Avatar size={24} icon={<UserOutlined />} style={{ background: '#1668dc', flexShrink: 0 }} />
-          <div style={{ minWidth: 0, lineHeight: 1.2 }}>
-            <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis>
-              {me?.name ?? '—'}
-            </Text>
-            <Text type="secondary" style={{ fontSize: 10 }} ellipsis>
-              {me?.role ?? 'без роли'}
-            </Text>
+        {compact ? (
+          <button type="button" className="onec-usermenu-compact" aria-label="Учётная запись">
+            <Avatar size={28} icon={<UserOutlined />} style={{ background: '#1668dc' }} />
+          </button>
+        ) : (
+          <div
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              borderTop: '1px solid #E8DCAE',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <Avatar size={24} icon={<UserOutlined />} style={{ background: '#1668dc', flexShrink: 0 }} />
+            <div style={{ minWidth: 0, lineHeight: 1.2 }}>
+              <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis>
+                {me?.name ?? '—'}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 10 }} ellipsis>
+                {me?.role ?? 'без роли'}
+              </Text>
+            </div>
           </div>
-        </div>
+        )}
       </Dropdown>
 
       <Modal

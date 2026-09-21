@@ -1,28 +1,30 @@
 import { useState } from 'react'
 import { useLogin } from '@refinedev/core'
-import { Input, Button, Typography, Alert, Space } from 'antd'
+import { Input, Button, Alert, Form } from 'antd'
+import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { Logo } from '../../components/Logo'
 
-const { Text } = Typography
-
 /**
- * Экран входа в духе 1С:Предприятие: рамка с сетчатым фоном, карточка
- * с подписями слева от полей, кнопки «Войти» / «Отмена» и плашка внизу.
+ * Вход в админку.
+ *
+ * Прежний экран повторял окно запуска 1С: рамка, сетчатый фон, подписи слева
+ * от полей. На телефоне это разваливалось — колонка подписей в 110 px съедала
+ * половину ширины, а поля оставались в узком остатке.
+ *
+ * Здесь одна карточка по центру: на широком экране рядом с ней полоса с именем
+ * системы, на узком — только карточка во всю ширину. Подписи над полями, а не
+ * сбоку: так они не отнимают ширину у ввода.
  */
 export function LoginPage() {
   const { mutate: login, isPending } = useLogin()
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [form] = Form.useForm()
 
-  const submit = () => {
-    if (!username.trim() || !password) {
-      setError('Введите логин и пароль')
-      return
-    }
+  const submit = async () => {
+    const v = await form.validateFields()
     setError(null)
     login(
-      { username: username.trim(), password },
+      { username: v.username.trim(), password: v.password },
       {
         onSuccess: (data: any) => {
           if (!data?.success) setError(data?.error?.message ?? 'Не удалось войти')
@@ -33,114 +35,71 @@ export function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#fff',
-        padding: 20,
-      }}
-    >
-      {/* Ширины — потолок, а не фиксатор: на телефоне окно ужимается по экрану. */}
-      <div style={{ width: '100%', maxWidth: 620, border: '1px solid #d9d9d9', background: '#fff' }}>
-        {/* Сетчатый фон — как в оригинальном окне запуска 1С. */}
-        <div
-          style={{
-            position: 'relative',
-            padding: 'clamp(24px, 6vw, 56px) clamp(12px, 4vw, 24px)',
-            backgroundColor: '#fdfdfd',
-            backgroundImage: `
-              radial-gradient(circle at 18% 30%, #e8e8e8 3px, transparent 3px),
-              radial-gradient(circle at 62% 16%, #e8e8e8 5px, transparent 5px),
-              radial-gradient(circle at 88% 42%, #ececec 4px, transparent 4px),
-              radial-gradient(circle at 30% 78%, #ececec 6px, transparent 6px),
-              radial-gradient(circle at 76% 84%, #e8e8e8 3px, transparent 3px),
-              linear-gradient(115deg, transparent 49.7%, #f0f0f0 49.7%, #f0f0f0 50%, transparent 50%),
-              linear-gradient(65deg, transparent 49.8%, #f0f0f0 49.8%, #f0f0f0 50%, transparent 50%),
-              linear-gradient(160deg, transparent 49.8%, #f2f2f2 49.8%, #f2f2f2 50%, transparent 50%)
-            `,
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 440,
-              margin: '0 auto',
-              background: '#fff',
-              border: '1px solid #c9c9c9',
-              padding: '18px 22px 20px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-            }}
-          >
-            <div style={{ fontSize: 19, color: '#3d3d3d', marginBottom: 18 }}>
-              Love<span style={{ color: '#E4002B' }}>&</span>Pay — Админка
-            </div>
+    <div className="onec-login">
+      <div className="onec-login__card">
+        <aside className="onec-login__side">
+          <span className="onec-login__logo">
+            <Logo height={34} />
+          </span>
+          <div>
+            <p className="onec-login__title">
+              Love<span className="onec-login__amp">&</span>Pay
+            </p>
+            <p className="onec-login__subtitle">Административная панель</p>
+          </div>
+          <p className="onec-login__note">
+            Доступ только для сотрудников. Действия записываются в журнал.
+          </p>
+        </aside>
 
-            {error && (
-              <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />
-            )}
+        <div className="onec-login__form">
+          <div className="onec-login__brand-mobile">
+            <span className="onec-login__logo">
+              <Logo height={28} />
+            </span>
+            <p className="onec-login__title">
+              Love<span className="onec-login__amp">&</span>Pay
+            </p>
+          </div>
 
-            {/* Подписи слева от полей — ключевая примета окна 1С. */}
-            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '10px 8px', alignItems: 'center' }}>
-              <Text style={{ textAlign: 'right', fontSize: 13 }}>Пользователь:</Text>
+          <h1 className="onec-login__heading">Вход в систему</h1>
+
+          {error && (
+            <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />
+          )}
+
+          <Form form={form} layout="vertical" size="large" onFinish={submit} requiredMark={false}>
+            <Form.Item
+              name="username"
+              label="Пользователь"
+              rules={[{ required: true, message: 'Введите логин' }]}
+            >
               <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onPressEnter={submit}
+                prefix={<UserOutlined style={{ color: '#9ca3af' }} />}
                 autoFocus
                 autoComplete="username"
+                placeholder="admin"
               />
+            </Form.Item>
 
-              <Text style={{ textAlign: 'right', fontSize: 13 }}>Пароль:</Text>
+            <Form.Item
+              name="password"
+              label="Пароль"
+              rules={[{ required: true, message: 'Введите пароль' }]}
+            >
               <Input.Password
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onPressEnter={submit}
+                prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
                 autoComplete="current-password"
+                placeholder="••••••••"
               />
-            </div>
+            </Form.Item>
 
-            <Space style={{ marginTop: 18, justifyContent: 'center', width: '100%' }} size={8}>
-              <Button type="primary" onClick={submit} loading={isPending} style={{ minWidth: 92 }}>
-                Войти
-              </Button>
-              <Button
-                onClick={() => {
-                  setUsername('')
-                  setPassword('')
-                  setError(null)
-                }}
-                style={{ minWidth: 92 }}
-              >
-                Отмена
-              </Button>
-            </Space>
-          </div>
-        </div>
+            <Button type="primary" htmlType="submit" loading={isPending} block size="large">
+              Войти
+            </Button>
+          </Form>
 
-        <div
-          style={{
-            background: '#f0f0f0',
-            borderTop: '1px solid #d9d9d9',
-            padding: '14px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: 0.3, color: '#3d3d3d' }}>
-              LOVE&PAY АДМИНКА
-            </div>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              © Love&Pay, {new Date().getFullYear()}
-            </Text>
-          </div>
-          <span style={{ color: '#E4002B' }}>
-            <Logo height={30} />
-          </span>
+          <p className="onec-login__foot">© Love&Pay, {new Date().getFullYear()}</p>
         </div>
       </div>
     </div>

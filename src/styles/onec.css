@@ -145,34 +145,239 @@ h4.ant-typography {
   padding: 12px 16px;
 }
 
-/* ── Область документа ─────────────────────────────────────────────────────── */
-.onec-content {
-  background: #ffffff;
-  border: 1px solid #e6e8eb;
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  padding: 20px;
-  min-height: calc(100vh - 60px);
+/* ══ Оболочка: мебель плавает карточками с отступом от краёв ══════════════════
+
+   Отступ здесь не украшение. Он отделяет служебные элементы — панель разделов,
+   шапку, подвал — от содержимого, и край окна перестаёт читаться как край
+   таблицы. По той же причине у всего скругление: прямые углы во всю ширину
+   склеивают мебель с данными.
+
+   Размеры собраны в переменные: поля и скругления должны меняться вместе,
+   иначе «плавающий» вид рассыпается на первой же правке.                     */
+:root {
+  --onec-gap: 12px;
+  --onec-radius: 16px;
+  --onec-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+  --onec-border: #e6e8eb;
 }
 
-/* ── Телефон: приложение, а не сжатый десктоп ──────────────────────────────── */
-.onec-mobile-bar {
+.onec-shell {
+  display: flex;
+  gap: var(--onec-gap);
+  padding: var(--onec-gap);
+  min-height: 100vh;
+  background: #f3f4f6;
+  align-items: flex-start;
+}
+
+/* ── Панель разделов ──────────────────────────────────────────────────────── */
+.onec-aside {
   position: sticky;
-  top: 0;
+  top: var(--onec-gap);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  /* Высота окна минус поля сверху и снизу — панель не вылезает за край. */
+  height: calc(100vh - var(--onec-gap) * 2);
+  background: #fcf6d8;
+  border: 1px solid #e8dcae;
+  border-radius: var(--onec-radius);
+  box-shadow: var(--onec-shadow);
+  overflow: hidden;
+}
+.onec-aside__menu {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.onec-aside__foot {
+  border-top: 1px solid #e8dcae;
+}
+
+/* Скругление панели не должно срезать подсветку активного пункта. */
+.onec-aside .ant-menu-item,
+.onec-aside .ant-menu-submenu-title {
+  border-radius: 8px;
+  margin-inline: 6px;
+  width: auto;
+}
+
+/* ── Правая колонка: шапка, содержимое, подвал ────────────────────────────── */
+.onec-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--onec-gap);
+  min-height: calc(100vh - var(--onec-gap) * 2);
+}
+
+.onec-header {
+  position: sticky;
+  top: var(--onec-gap);
   z-index: 20;
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
+  border-radius: var(--onec-radius);
+  box-shadow: var(--onec-shadow);
+  overflow: hidden;
+}
+
+.onec-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+/* ── Область документа ─────────────────────────────────────────────────────── */
+.onec-content {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
+  border-radius: var(--onec-radius);
+  box-shadow: var(--onec-shadow);
+  padding: 20px;
+}
+
+.onec-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
+  border-radius: var(--onec-radius);
+  box-shadow: var(--onec-shadow);
+  color: #9ca3af;
+  font-size: 12px;
+}
+.onec-footer__dot {
+  opacity: 0.6;
+}
+
+/* ══ Телефон: приложение, а не сжатый десктоп ════════════════════════════════ */
+.onec-shell--mobile {
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  /* dvh, а не vh: в мобильных браузерах адресная строка то появляется, то
+     исчезает, и вёрстка на vh прыгает вместе с ней. */
+  min-height: 100dvh;
+}
+
+.onec-topbar {
+  position: sticky;
+  /* Отступ сверху с учётом чёлки: под ней шапка была бы наполовину скрыта. */
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  margin: calc(env(safe-area-inset-top, 0px) + 8px) 8px 0;
+  padding: 6px 8px 6px 4px;
   background: #fcf6d8;
-  border-bottom: 1px solid #e8dcae;
+  border: 1px solid #e8dcae;
+  border-radius: 14px;
+  box-shadow: var(--onec-shadow);
+}
+.onec-topbar__spacer {
+  flex: 1;
+}
+
+.onec-usermenu-compact {
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.onec-shell--mobile .onec-main {
+  padding: 8px;
+  /* Запас снизу: нижнее меню плавает над содержимым, и без него последняя
+     строка таблицы оказывается под ним. */
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 }
 
 .onec-content--mobile {
   padding: 12px;
-  border-radius: 12px;
-  min-height: calc(100vh - 80px);
+  border-radius: 14px;
 }
+
+/* ── Нижнее меню ──────────────────────────────────────────────────────────── */
+.onec-bottomnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 0 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  pointer-events: none;
+}
+.onec-bottomnav__inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  /* Подложка размывается: под меню проезжает таблица, и без этого цифры
+     просвечивают сквозь полупрозрачный фон. */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--onec-border);
+  border-radius: 18px;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.06), 0 10px 28px rgba(16, 24, 40, 0.12);
+}
+.onec-bottomnav__item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 2px 6px;
+  border: 0;
+  background: none;
+  border-radius: 13px;
+  color: #71717a;
+  font-size: 10px;
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  /* Палец промахивается по мелким целям: держим высоту не меньше 48 px. */
+  min-height: 48px;
+}
+.onec-bottomnav__item:active {
+  background: #f1f2f4;
+}
+.onec-bottomnav__item.is-active {
+  color: #1668dc;
+  background: #eaf2fd;
+}
+.onec-bottomnav__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.onec-bottomnav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Шторка разделов тоже плавающая, в тон остальному. */
+.onec-drawer .ant-drawer-content {
+  border-radius: 0 18px 18px 0;
+  overflow: hidden;
+}
+
+
 
 @media (max-width: 991px) {
   /* Заголовки разделов крупные для десктопа — на телефоне съедают экран. */
@@ -324,4 +529,118 @@ h4.ant-typography {
   gap: 8px;
   padding-top: 8px;
   border-top: 1px solid #f2f2f4;
+}
+
+/* ══ Вход ════════════════════════════════════════════════════════════════════
+
+   Одна карточка по центру. На широком экране слева полоса с именем системы,
+   справа форма; на узком полоса убирается, а её содержимое переезжает в шапку
+   формы — иначе на 360 px под ввод оставалось бы полэкрана.                   */
+.onec-login {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 16px);
+  background: #f3f4f6;
+  /* Мягкое пятно за карточкой: плоский серый фон под белой карточкой выглядит
+     незаконченным, а полноценная картинка тут лишняя. */
+  background-image: radial-gradient(1200px 500px at 50% -10%, #e8eefb 0%, transparent 70%);
+}
+
+.onec-login__card {
+  display: flex;
+  width: 100%;
+  max-width: 880px;
+  background: #ffffff;
+  border: 1px solid var(--onec-border);
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05), 0 16px 40px rgba(16, 24, 40, 0.1);
+  overflow: hidden;
+}
+
+.onec-login__side {
+  flex: 0 0 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 36px 32px;
+  background: #fcf6d8;
+  border-inline-end: 1px solid #e8dcae;
+}
+
+.onec-login__logo {
+  color: #e4002b;
+  display: inline-flex;
+}
+
+.onec-login__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #3d3d3d;
+}
+.onec-login__amp {
+  color: #e4002b;
+}
+.onec-login__subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #7a7360;
+}
+.onec-login__note {
+  margin: auto 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a8270;
+}
+
+.onec-login__form {
+  flex: 1;
+  min-width: 0;
+  padding: 36px 32px;
+}
+
+.onec-login__brand-mobile {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.onec-login__heading {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #1a1a1c;
+}
+
+.onec-login__foot {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+@media (max-width: 767px) {
+  .onec-login__card {
+    max-width: 440px;
+    border-radius: 18px;
+  }
+  /* Боковая полоса скрывается: её роль берёт на себя шапка формы. */
+  .onec-login__side {
+    display: none;
+  }
+  .onec-login__brand-mobile {
+    display: flex;
+  }
+  .onec-login__form {
+    padding: 26px 20px 24px;
+  }
+  .onec-login__heading {
+    font-size: 18px;
+  }
 }
