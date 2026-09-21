@@ -40,6 +40,7 @@ import {
   GlobalOutlined,
   BookOutlined,
   MoneyCollectOutlined,
+  UserSwitchOutlined,
 } from '@ant-design/icons'
 import '@refinedev/antd/dist/reset.css'
 import './styles/onec.css'
@@ -59,6 +60,7 @@ import { AdminUsers } from './pages/admin-users'
 import { AdminRoles } from './pages/admin-roles'
 import { TransactionList } from './pages/transactions/list'
 import { InvoiceList } from './pages/invoices/list'
+import { AgentsPage } from './pages/agents'
 import { PartnerList } from './pages/partners/list'
 import { UserList } from './pages/users/list'
 import { PayoutList } from './pages/payouts/list'
@@ -135,6 +137,11 @@ export default function App() {
                 name: 'users',
                 list: '/users',
                 meta: { label: 'Пользователи', icon: <TeamOutlined /> },
+              },
+              {
+                name: 'agents',
+                list: '/agents',
+                meta: { label: 'Агенты', icon: <UserSwitchOutlined /> },
               },
               {
                 name: 'refund-requests',
@@ -322,6 +329,7 @@ export default function App() {
                 <Route path="/invoices" element={<InvoiceList />} />
                 <Route path="/partners" element={<PartnerList />} />
                 <Route path="/users" element={<UserList />} />
+                <Route path="/agents" element={<AgentsPage />} />
                 <Route path="/payouts" element={<PayoutList />} />
                 <Route path="/payout-sheet" element={<PayoutSheet />} />
                 <Route path="/refund-requests" element={<RefundList />} />

@@ -128,6 +128,8 @@ function sectionOfPath(url: string): string | null {
     partners: 'partners',
     'partner-moderation': 'partner-moderation',
     users: 'users',
+    agents: 'agents',
+    'agent-applications': 'agents',
     terminals: 'terminals',
     webhooks: 'webhooks',
     finance: 'finance',

@@ -74,6 +74,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'partner-moderation', label: 'Модерация', group: 'Партнёры' },
   { key: 'hierarchy', label: 'Иерархия', group: 'Партнёры' },
   { key: 'users', label: 'Пользователи', group: 'Партнёры' },
+  { key: 'agents', label: 'Агенты', group: 'Партнёры' },
   { key: 'terminals', label: 'Терминалы', group: 'Партнёры' },
   { key: 'webhooks', label: 'Вебхуки', group: 'Партнёры' },
   { key: 'finance', label: 'Финансы: сводка', group: 'Финансы' },
@@ -184,6 +185,19 @@ export async function migrateAuth() {
       [r.name, r.description, r.is_system, JSON.stringify(r.permissions)],
     )
   }
+
+  // Системной роли «Администратор» обещан полный доступ ко всем разделам, и
+  // это обещание нужно подтверждать при каждом запуске. Строка в базе хранит
+  // снимок прав на момент создания, а вставка выше существующие не трогает:
+  // без этой синхронизации каждый новый раздел оказывался бы недоступен даже
+  // администратору, и понять почему было бы непросто.
+  //
+  // Остальные роли не трогаем: их состав выбрал оператор, и молча выдавать им
+  // доступ к новому разделу нельзя.
+  await pool.query(
+    `update admin_roles set permissions = $1 where is_system = true and permissions <> $1`,
+    [JSON.stringify(all('write'))],
+  )
 
   const { rows: existing } = await pool.query('select count(*)::int as n from admin_users')
   if (existing[0].n > 0) return
