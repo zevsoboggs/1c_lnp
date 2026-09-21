@@ -35,15 +35,35 @@ export const PartnerList = () => {
     setFilters([{ field, operator: 'eq', value }], 'merge')
 
   const create = useMutation({
-    mutationFn: (v: any) => action<{ partner: any }>('/partners', { body: v }),
+    // Пароль знает только форма — сервер его назад не возвращает. Придерживаем
+    // введённое значение, чтобы показать вместе с ключом: иначе придуманный
+    // кнопкой пароль исчезнет, и партнёру нечего будет передать.
+    mutationFn: async (v: any) => {
+      const r = await action<{ partner: any }>('/partners', { body: v })
+      return {
+        ...r,
+        password: typeof v.userPassword === 'string' ? v.userPassword : null,
+        login: typeof v.userEmail === 'string' ? v.userEmail : null,
+      }
+    },
     onSuccess: (r) => {
       setForm(null)
       tableQuery.refetch()
-      if (r.partner?.apiSecretKey) {
+
+      const lines: string[] = []
+      if (r.partner?.apiSecretKey) lines.push(`API-секрет: ${r.partner.apiSecretKey}`)
+      if (r.password) {
+        if (r.login) lines.push(`Вход: ${r.login}`)
+        lines.push(`Пароль: ${r.password}`)
+      }
+
+      if (lines.length > 0) {
         setSecret({
           title: `Партнёр «${r.partner.name}» создан`,
-          value: r.partner.apiSecretKey,
-          hint: 'API-секрет отдаётся только сейчас. Перевыпустить можно кнопкой с ключом, но старый сразу перестанет работать.',
+          value: lines.join('\n'),
+          hint:
+            'Показывается один раз. Передайте партнёру и закройте окно. ' +
+            'API-секрет можно перевыпустить кнопкой с ключом, но старый сразу перестанет работать.',
         })
       } else {
         message.success('Партнёр создан')

@@ -1,10 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Alert, Typography } from 'antd'
+import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Alert, Button, Typography } from 'antd'
 import { TERMINAL_PROVIDERS, options } from '../../lib/apiEnums'
 
 const { Text } = Typography
 
 export type PartnerFormValues = Record<string, unknown>
+
+/**
+ * Пароль для первого входа.
+ *
+ * Придумывать его руками — лишний повод поставить «123456789»: пароль всё
+ * равно временный, партнёр меняет его при первом входе. Алфавит без похожих
+ * знаков (0/O, 1/l/I): пароль часто диктуют голосом или переписывают с экрана.
+ */
+function makePassword(): string {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+  const bytes = crypto.getRandomValues(new Uint32Array(14))
+  return Array.from(bytes, (n) => abc[n % abc.length]).join('')
+}
 
 /**
  * Создание и правка партнёра.
@@ -30,12 +43,16 @@ export function PartnerForm({
 }) {
   const [form] = Form.useForm()
   const [autoId, setAutoId] = useState(true)
+  // Учётную запись заводим сразу: партнёр без неё не может войти в кабинет, и
+  // это выясняется много позже, когда он уже ждёт доступ.
+  const [withLogin, setWithLogin] = useState(true)
 
   useEffect(() => {
     if (!open) return
     form.resetFields()
     if (mode === 'edit' && initial) form.setFieldsValue(initial)
     setAutoId(true)
+    setWithLogin(true)
   }, [open, initial, mode, form])
 
   const submit = async () => {
@@ -108,23 +125,80 @@ export function PartnerForm({
             </Form.Item>
 
             <Divider orientation="left" style={{ fontSize: 12 }}>
-              Владелец (необязательно)
+              Вход в кабинет
             </Divider>
             <Alert
-              type="info"
+              type={withLogin ? 'info' : 'warning'}
               showIcon
               style={{ marginBottom: 12 }}
-              message="Email и пароль нужны только вместе — если заполнить одно, пользователь молча не создастся."
+              message={
+                withLogin
+                  ? 'Партнёр сможет войти в кабинет этой почтой и паролем.'
+                  : 'Без учётной записи партнёр создастся, но войти в кабинет будет некому — и счета он выставлять не сможет.'
+              }
             />
-            <Form.Item name="userEmail" label="Email пользователя">
-              <Input />
+
+            <Form.Item label="Создать учётную запись">
+              <Switch
+                size="small"
+                checked={withLogin}
+                onChange={(v) => {
+                  setWithLogin(v)
+                  // Почта партнёра почти всегда и есть почта входа — подставляем,
+                  // чтобы не вводить одно и то же дважды.
+                  if (v && !form.getFieldValue('userEmail')) {
+                    form.setFieldValue('userEmail', form.getFieldValue('email'))
+                  }
+                }}
+                style={{ marginRight: 8 }}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                почта и пароль для входа партнёра
+              </Text>
             </Form.Item>
-            <Form.Item name="userPassword" label="Пароль">
-              <Input.Password />
-            </Form.Item>
-            <Form.Item name="userName" label="Имя" extra="По умолчанию — название партнёра">
-              <Input />
-            </Form.Item>
+
+            {withLogin && (
+              <>
+                <Form.Item
+                  name="userEmail"
+                  label="Почта для входа"
+                  rules={[
+                    { required: true, message: 'Обязательно' },
+                    { type: 'email', message: 'Похоже на опечатку в адресе' },
+                  ]}
+                >
+                  <Input placeholder="owner@example.com" />
+                </Form.Item>
+
+                <Form.Item
+                  name="userPassword"
+                  label="Пароль"
+                  rules={[
+                    { required: true, message: 'Обязательно' },
+                    { min: 8, message: 'Не короче 8 символов' },
+                  ]}
+                  extra="Партнёр увидит его один раз после создания — передайте и попросите сменить."
+                >
+                  <Input.Password
+                    autoComplete="new-password"
+                    addonAfter={
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{ padding: 0, height: 'auto' }}
+                        onClick={() => form.setFieldValue('userPassword', makePassword())}
+                      >
+                        Придумать
+                      </Button>
+                    }
+                  />
+                </Form.Item>
+
+                <Form.Item name="userName" label="Имя" extra="По умолчанию — название партнёра">
+                  <Input />
+                </Form.Item>
+              </>
+            )}
           </>
         )}
 
