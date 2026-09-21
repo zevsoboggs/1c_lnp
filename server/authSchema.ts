@@ -87,6 +87,7 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'pos-markups', label: 'POS-наценки', group: 'Финансы' },
   { key: 'referral-overrides', label: 'Реф. наценки', group: 'Финансы' },
   { key: 'vcc', label: 'Виртуальные карты', group: 'Финансы' },
+  { key: 'energy', label: 'Аренда энергии', group: 'Финансы' },
   { key: 'reports', label: 'Отчёты по партнёрам', group: 'Финансы' },
   { key: 'api-logs', label: 'API-логи', group: 'Журналы' },
   { key: 'audit-logs', label: 'Аудит действий', group: 'Журналы' },

@@ -79,6 +79,7 @@ import { KycVerificationList } from './pages/kyc-verifications/list'
 import { HierarchyPage } from './pages/hierarchy'
 import { PartnerModerationPage } from './pages/partner-moderation'
 import { VccPage } from './pages/vcc'
+import { EnergyPage } from './pages/energy'
 import { ApiLogList } from './pages/api-logs/list'
 import { AuditLogList } from './pages/audit-logs/list'
 import { MiniappOrders } from './pages/miniapp-orders'
@@ -200,6 +201,11 @@ export default function App() {
                 name: 'vcc',
                 list: '/vcc',
                 meta: { label: 'Виртуальные карты', parent: 'money', icon: <WalletOutlined /> },
+              },
+              {
+                name: 'energy',
+                list: '/energy',
+                meta: { label: 'Аренда энергии', parent: 'money', icon: <ThunderboltOutlined /> },
               },
               {
                 name: 'reports',
@@ -344,6 +350,7 @@ export default function App() {
                 <Route path="/partner-moderation" element={<PartnerModerationPage />} />
                 <Route path="/hierarchy" element={<HierarchyPage />} />
                 <Route path="/vcc" element={<VccPage />} />
+                <Route path="/energy" element={<EnergyPage />} />
                 <Route path="/api-logs" element={<ApiLogList />} />
                 <Route path="/audit-logs" element={<AuditLogList />} />
                 <Route path="/miniapp-orders" element={<MiniappOrders />} />
