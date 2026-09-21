@@ -21,6 +21,7 @@ import { Toolbar } from '../../components/Toolbar'
 import { Field } from '../../components/Field'
 import { useRowMenu } from '../../components/useRowMenu'
 import { DataTable } from '../../components/DataTable'
+import { EsimLookup } from './Lookup'
 
 const { Text } = Typography
 
@@ -78,7 +79,8 @@ const num = (v: unknown) => {
 const eur = (v: unknown) => `${num(v).toFixed(2)} €`
 
 export const EsimPage = () => {
-  const [tab, setTab] = useState('orders')
+  // Поддержка открывает раздел ради поиска по номеру — с него и начинаем.
+  const [tab, setTab] = useState('lookup')
   const [planSearch, setPlanSearch] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [buyer, setBuyer] = useState<string>()
@@ -284,6 +286,13 @@ export const EsimPage = () => {
           activeKey={tab}
           onChange={setTab}
           items={[
+            {
+              // Поиск идёт первым: с него начинается обращение в поддержку —
+              // клиент называет номер, а не листает заказы.
+              key: 'lookup',
+              label: 'Поиск по номеру',
+              children: <EsimLookup />,
+            },
             {
               key: 'orders',
               label: `Заказы · ${allOrders.length}`,

@@ -242,3 +242,34 @@ miniapp.post('/broadcast/start', upload.single('photo'), async (req, res) => {
     res.status(e.status ?? 502).json({ success: false, error: e.message })
   }
 })
+
+/**
+ * Карточка eSIM по её короткому номеру — то, что оператор спрашивает у клиента
+ * по телефону.
+ *
+ * Номер принимаем как угодно: ES-XNRR3S, es-xnrr3s, XNRR3S. Человек диктует
+ * его вслух, и требовать точного написания значит ловить операторов на
+ * ерунде. Приводим к одному виду здесь, чтобы не гонять лишний запрос на
+ * заведомо неподходящую строку.
+ */
+miniapp.get('/support/esim/:reference', async (req, res) => {
+  try {
+    const raw = String(req.params.reference ?? '')
+    // Убираем всё, кроме букв и цифр, и дописываем приставку, если её не
+    // назвали. Алфавит номера без нуля и единицы — похожие знаки в него не
+    // попадают, поэтому подменять O на 0 не нужно.
+    const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    const body = clean.startsWith('ES') ? clean.slice(2) : clean
+
+    if (body.length < 4) {
+      return res.status(400).json({ success: false, error: 'Слишком короткий номер eSIM' })
+    }
+
+    const data = await call(`/api/admin/support/esim/ES-${body}`)
+    res.json({ success: true, ...data })
+  } catch (e: any) {
+    // 404 от мини-аппа — это «номер не найден», а не поломка: отдаём как есть,
+    // чтобы интерфейс показал понятное сообщение, а не «сервис недоступен».
+    res.status(e.status ?? 502).json({ success: false, error: e.message })
+  }
+})
