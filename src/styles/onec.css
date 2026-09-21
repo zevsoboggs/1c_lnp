@@ -262,6 +262,12 @@ h4.ant-typography {
   flex-direction: column;
   padding: 0;
   gap: 0;
+  /* Страховка: что бы ни оказалось внутри, вбок страница не поедет. Без неё
+     одна широкая ячейка обрезает шапку и карточки по всей высоте.
+     Именно clip, а не hidden: hidden делает элемент контейнером прокрутки, и
+     прилипающая шапка начинает липнуть к нему вместо экрана. */
+  max-width: 100%;
+  overflow-x: clip;
   /* dvh, а не vh: в мобильных браузерах адресная строка то появляется, то
      исчезает, и вёрстка на vh прыгает вместе с ней. */
   min-height: 100dvh;
@@ -319,8 +325,21 @@ h4.ant-typography {
   border-radius: 0;
   box-shadow: none;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  /* Обычный блок, а не флекс. У флекс-детей min-width равен auto, они не
+     ужимаются уже своего содержимого и вылезают наружу — документ становится
+     шире экрана, и всё, что считает ширину от него (шапка, карточки),
+     обрезается справа. Нижнее меню при этом выглядит целым, потому что
+     привязано к экрану, а не к документу: по этому расхождению причину и
+     видно. */
+  display: block;
+  min-width: 0;
+}
+
+/* Ни один блок страницы не вправе быть шире экрана. Длинная почта, номер
+   заказа или широкая таблица иначе растягивают всю страницу. */
+.onec-content--mobile > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Внешняя карточка страницы (её рисует List из Refine) рамку не держит: она
@@ -340,6 +359,17 @@ h4.ant-typography {
   padding: 0;
 }
 
+/* Промежутки между блоками страницы. Раньше их раздавал флекс; теперь
+   контейнер обычный блок, и расстояние задают сами блоки. */
+.onec-content--mobile .ant-card,
+.onec-content--mobile .onec-toolbar,
+.onec-content--mobile .ant-table-wrapper {
+  margin-bottom: 10px;
+}
+.onec-content--mobile > .ant-card {
+  margin-bottom: 0;
+}
+
 /* Блоки внутри страницы — фильтры, тулбар, список — становятся отдельными
    карточками с одинаковым промежутком. */
 .onec-content--mobile .ant-card .ant-card,
@@ -352,6 +382,14 @@ h4.ant-typography {
   border: 1px solid var(--onec-border);
   box-shadow: var(--onec-shadow);
   overflow: hidden;
+  max-width: 100%;
+}
+/* Если содержимое всё же шире — прокручивается сама таблица, а не страница. */
+.onec-shell--mobile .ant-table-content {
+  overflow-x: auto;
+}
+.onec-shell--mobile .ant-table {
+  min-width: 0;
 }
 .onec-shell--mobile .onec-toolbar {
   box-shadow: var(--onec-shadow);
