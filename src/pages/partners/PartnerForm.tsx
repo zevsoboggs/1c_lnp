@@ -221,6 +221,32 @@ export function PartnerForm({
             </Form.Item>
 
             <Divider orientation="left" style={{ fontSize: 12 }}>
+              Криптоплатежи (USDT)
+            </Divider>
+            <Form.Item
+              name="cryptoEnabled"
+              label="Приём USDT включён"
+              valuePropName="checked"
+              extra="Без флага раздел в кабинете партнёра и крипто-API отвечают «не подключено»."
+            >
+              <Switch size="small" />
+            </Form.Item>
+            <Form.Item
+              name="cryptoFeePercent"
+              label="Наша наценка на крипто-счёт, %"
+              extra="Удерживается из каждого оплаченного счёта; партнёру зачисляется остаток."
+            >
+              <InputNumber style={{ width: '100%' }} min={0} max={50} step={0.1} />
+            </Form.Item>
+            <Form.Item
+              name="cryptoPayoutFee"
+              label="Комиссия за вывод, USDT"
+              extra="Списывается с баланса партнёра сверх суммы выплаты — покрывает комиссию сети."
+            >
+              <InputNumber style={{ width: '100%' }} min={0} step={0.1} />
+            </Form.Item>
+
+            <Divider orientation="left" style={{ fontSize: 12 }}>
               Лимиты и доступ
             </Divider>
             <Form.Item name="rateLimitPerMinute" label="Запросов в минуту">

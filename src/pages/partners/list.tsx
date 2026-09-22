@@ -186,6 +186,7 @@ export const PartnerList = () => {
               {r.isBlocked && <Tag color="error">Заблокирован</Tag>}
               {r.apiBlocked && <Tag color="warning">API off</Tag>}
               {r.kycEnabled && <Tag color="blue">KYC</Tag>}
+              {r.cryptoEnabled && <Tag color="gold">USDT {r.cryptoFeePercent ?? 0}%</Tag>}
             </Space>
           )}
         />
