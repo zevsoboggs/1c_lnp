@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Menu, Drawer, Button, Grid } from 'antd'
 import {
   MenuOutlined, HomeOutlined, SwapOutlined, FileTextOutlined, ApartmentOutlined,
@@ -76,6 +77,17 @@ function visibleMenu(items: TreeMenuItem[]): TreeMenuItem[] {
 export function Layout({ children }: { children: ReactNode }) {
   // Пояс читаем здесь: смена перерисует и шапку, и содержимое раздела.
   const tzOffset = useTimezoneOffset()
+
+  // Суммы за период считает сервер, и пояс уходит в запрос. Значит, при смене
+  // пояса ответы в кеше устарели — иначе цифры остались бы прежними, а даты
+  // рядом сдвинулись бы, и это выглядело бы как ошибка в расчётах.
+  const queryClient = useQueryClient()
+  const knownOffset = useRef(tzOffset)
+  useEffect(() => {
+    if (knownOffset.current === tzOffset) return
+    knownOffset.current = tzOffset
+    void queryClient.invalidateQueries()
+  }, [tzOffset, queryClient])
   const { menuItems, selectedKey, defaultOpenKeys } = useMenu()
   const screens = Grid.useBreakpoint()
   // lg — граница, ниже которой панель в 240 px уже не оставляет места таблицам.

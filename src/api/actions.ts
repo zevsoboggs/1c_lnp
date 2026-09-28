@@ -6,13 +6,20 @@
  * формат ответа.
  */
 
+import { timezoneOffset } from '../lib/timezone'
+
 export type ApiError = Error & { code?: string; status?: number }
 
 export async function action<T = any>(
   path: string,
   init?: { method?: string; body?: unknown },
 ): Promise<T> {
-  const res = await fetch(`/admin-api/v1${path}`, {
+  // Пояс оператора нужен и здесь: по нему считаются сутки в сводках.
+  const [base, qs = ''] = path.split('?')
+  const params = new URLSearchParams(qs)
+  params.set('tzOffset', String(timezoneOffset()))
+
+  const res = await fetch(`/admin-api/v1${base}?${params.toString()}`, {
     method: init?.method ?? 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: init?.body ? JSON.stringify(init.body) : undefined,

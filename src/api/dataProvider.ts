@@ -1,11 +1,25 @@
 import type { DataProvider, HttpError, CrudFilters } from '@refinedev/core'
 import { getSpec, type ResourceSpec } from './resourceMap'
+import { timezoneOffset } from '../lib/timezone'
 
 /** Идём в свой бэкенд (server/), он подставляет ключ и ходит в loveandpay. */
 const API_BASE = '/admin-api/v1'
 
+/**
+ * Часовой пояс оператора уходит в каждый запрос: по нему бэкенд нарезает
+ * сутки для сумм за период. Без него «оборот за 28-е» считался бы по UTC и
+ * не сходился с выпиской у того, кто смотрит из Москвы или Екатеринбурга.
+ */
+function withTimezone(path: string): string {
+  const [base, qs = ''] = path.split('?')
+  const params = new URLSearchParams(qs)
+  params.set('tzOffset', String(timezoneOffset()))
+
+  return `${base}?${params.toString()}`
+}
+
 async function request<T = any>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${withTimezone(path)}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   })
