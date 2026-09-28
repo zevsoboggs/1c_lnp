@@ -9,7 +9,9 @@ import { Link, useLocation } from 'react-router'
 import type { ReactNode } from 'react'
 import { Brand } from './Brand'
 import { UserMenu } from './UserMenu'
+import { TimezonePicker } from './TimezonePicker'
 import { TabsBar } from './TabsBar'
+import { useTimezoneOffset } from '../lib/timezone'
 import { BottomNav, type NavItem } from './BottomNav'
 import { getMe } from '../api/authProvider'
 import { C1 } from '../theme'
@@ -72,6 +74,8 @@ function visibleMenu(items: TreeMenuItem[]): TreeMenuItem[] {
  * получает запас снизу, чтобы меню ничего не перекрывало.
  */
 export function Layout({ children }: { children: ReactNode }) {
+  // Пояс читаем здесь: смена перерисует и шапку, и содержимое раздела.
+  const tzOffset = useTimezoneOffset()
   const { menuItems, selectedKey, defaultOpenKeys } = useMenu()
   const screens = Grid.useBreakpoint()
   // lg — граница, ниже которой панель в 240 px уже не оставляет места таблицам.
@@ -109,6 +113,7 @@ export function Layout({ children }: { children: ReactNode }) {
           />
           <Brand compact />
           <div className="onec-topbar__spacer" />
+          <TimezonePicker compact />
           <UserMenu compact />
         </header>
 
@@ -133,7 +138,9 @@ export function Layout({ children }: { children: ReactNode }) {
         </Drawer>
 
         <main className="onec-main">
-          <div className="onec-content onec-content--mobile">{children}</div>
+          <div className="onec-content onec-content--mobile" key={`tz-${tzOffset}`}>
+            {children}
+          </div>
         </main>
 
         <BottomNav items={MOBILE_NAV} onMore={() => setDrawerOpen(true)} moreActive={drawerOpen} />
@@ -147,6 +154,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <Brand />
         <div className="onec-sider onec-aside__menu">{menu}</div>
         <div className="onec-aside__foot">
+          <TimezonePicker />
           <UserMenu />
         </div>
       </aside>
@@ -159,7 +167,11 @@ export function Layout({ children }: { children: ReactNode }) {
         </header>
 
         <main className="onec-main">
-          <div className="onec-content">{children}</div>
+          {/* Ключ по поясу: даты печатают обычные функции, а не хуки, поэтому
+              при смене пояса содержимое раздела перерисовываем целиком. */}
+          <div className="onec-content" key={`tz-${tzOffset}`}>
+            {children}
+          </div>
         </main>
 
         <footer className="onec-footer">

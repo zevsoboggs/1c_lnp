@@ -194,6 +194,20 @@ h4.ant-typography {
   border-top: 1px solid #e8dcae;
 }
 
+/* Выбор часового пояса над учётной записью: подпись мелкая, само поле во всю
+   ширину — иначе список городов обрезается. */
+.onec-tz {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid #e8dcae;
+}
+
+.onec-tz .ant-select {
+  width: 100%;
+}
+
 /* Скругление панели не должно срезать подсветку активного пункта. */
 .onec-aside .ant-menu-item,
 .onec-aside .ant-menu-submenu-title {
