@@ -282,25 +282,36 @@ export const cards = Router()
 // ── Обзор ────────────────────────────────────────────────────────────────────
 
 /**
- * Резерв и картотека одним ответом — это то, что открывают первым.
- *
- * Карт немного (десятки), поэтому статусы считаем по всему списку, а не по
- * странице. Потолок в тысячу — защита от неожиданного роста, а не лимит.
+ * Все карты HiCard целиком. Их десятки; потолок в тысячу — защита от
+ * неожиданного роста, а не лимит.
  */
+async function allCards(): Promise<any[]> {
+  const first = await hc<any>('GET', '/v1/cards', { query: { limit: 100, offset: 0 } })
+  const rows: any[] = [...(first?.rows ?? [])]
+  const total = Number(first?.total ?? rows.length)
+  for (let offset = rows.length; offset < Math.min(total, 1000); offset += 100) {
+    const next = await hc<any>('GET', '/v1/cards', { query: { limit: 100, offset } })
+    rows.push(...(next?.rows ?? []))
+    if ((next?.rows ?? []).length === 0) break
+  }
+  return rows
+}
+
+/** Все движения резерва — по ним HiCard говорит, сколько на самом деле ушло. */
+async function allMovements(): Promise<any[]> {
+  const rows: any[] = []
+  for (let offset = 0; offset < 5000; offset += 100) {
+    const d = await hc<any>('GET', '/v1/reserves/movements', { query: { limit: 100, offset } })
+    rows.push(...(d?.rows ?? []))
+    if ((d?.rows ?? []).length < 100) break
+  }
+  return rows
+}
+
+/** Резерв и картотека одним ответом — это то, что открывают первым. */
 cards.get('/summary', async (_req, res) => {
   try {
-    const [reserves, first] = await Promise.all([
-      hc<any>('GET', '/v1/reserves'),
-      hc<any>('GET', '/v1/cards', { query: { limit: 100, offset: 0 } }),
-    ])
-
-    const rows: any[] = [...(first?.rows ?? [])]
-    const total = Number(first?.total ?? rows.length)
-    for (let offset = rows.length; offset < Math.min(total, 1000); offset += 100) {
-      const next = await hc<any>('GET', '/v1/cards', { query: { limit: 100, offset } })
-      rows.push(...(next?.rows ?? []))
-      if ((next?.rows ?? []).length === 0) break
-    }
+    const [reserves, rows] = await Promise.all([hc<any>('GET', '/v1/reserves'), allCards()])
 
     const byStatus: Record<string, number> = {}
     for (const c of rows) {
@@ -319,27 +330,41 @@ cards.get('/summary', async (_req, res) => {
         pending: Number(r.pending ?? 0),
         frozen: Number(r.frozen ?? 0),
       })),
-      cards: { total, byStatus },
+      cards: { total: rows.length, byStatus },
     })
   } catch (e: any) {
     fail(res, e)
   }
 })
 
+/** id карты HiCard, к которой относится заказ мини-аппа. */
+const cardOf = (t: any): string | null => {
+  const id = t?.metadata?.providerCardId ?? t?.card?.paywaveCardId ?? t?.cards?.paywaveCardId
+  return id != null && id !== '' ? String(id) : null
+}
+
 /**
- * Выручка и себестоимость за период — из заказов мини-аппа.
+ * Выручка по картам HiCard за период.
  *
- * Выпуск: 35 USD за карту (metadata.feeUsd). Пополнение: клиент платит
- * брутто, на карту уходит credited — разница наша комиссия 3,5%. Для
- * пополнения с рублёвого баланса брутто лежит в metadata.gross.
- * Учитываем только COMPLETED: остальное деньгами не стало.
+ * В заказах мини-аппа лежат и карты прежних провайдеров (PaySpace, Card
+ * Program): их карты удалены, а заказы остались. Считать их сюда нельзя —
+ * выходило 60 выпусков при 26 картах. Поэтому заказ попадает в выручку,
+ * только если его карта есть у HiCard.
+ *
+ * Пополнение без поля credited (сколько ушло на карту) не додумываем: такая
+ * операция не попадает в расчёт комиссии и показывается отдельным числом.
+ * Иначе вся сумма пополнения считалась бы нашей комиссией.
+ *
+ * Рядом — то же по данным самого HiCard из движений резерва: сколько карт
+ * выпущено, сколько денег ушло на карты и что эмитент удержал. Расхождение
+ * заказов с резервом — повод разбираться.
  */
 cards.get('/revenue', async (req, res) => {
   try {
     const period = { fromDate: req.query.fromDate, toDate: req.query.toDate }
     const all = async (type: string) => {
       const out: any[] = []
-      for (let page = 1; page <= 20; page++) {
+      for (let page = 1; page <= 50; page++) {
         const d = await miniappCall<{ data: any[] }>('/api/admin/transactions', {
           type,
           status: 'COMPLETED',
@@ -353,44 +378,109 @@ cards.get('/revenue', async (req, res) => {
       return out
     }
 
-    const [activations, topups, topupsRub] = await Promise.all([
+    const [cardRows, movements, activations, topups, topupsRub] = await Promise.all([
+      allCards(),
+      allMovements(),
       all('CARD_ACTIVATION'),
       all('CARD_TOPUP'),
       all('CARD_TOPUP_RUB'),
     ])
 
-    const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
-    const issueUsd = activations.reduce((s, t) => s + num(t.metadata?.feeUsd ?? 35), 0)
-
-    let topupGross = 0
-    let topupCredited = 0
-    for (const t of topups) {
-      topupGross += num(t.amount)
-      topupCredited += num(t.metadata?.credited)
-    }
-    for (const t of topupsRub) {
-      topupGross += num(t.metadata?.gross ?? t.metadata?.amountUsd)
-      topupCredited += num(t.metadata?.credited)
+    const hicardIds = new Set(cardRows.map((c) => String(c.id)))
+    const ours = (t: any) => {
+      const id = cardOf(t)
+      return id != null && hicardIds.has(id)
     }
 
-    const byProvider: Record<string, number> = {}
-    for (const t of [...activations, ...topups, ...topupsRub]) {
-      const p = t.metadata?.provider ?? t.metadata?.paymentMethod ?? 'INTERNAL'
-      byProvider[p] = (byProvider[p] ?? 0) + 1
-    }
-
+    const num = (v: unknown): number | null =>
+      v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v)
     const round = (v: number) => Math.round(v * 100) / 100
+
+    // ── выпуск ──
+    const issued = activations.filter(ours)
+    // Выпуск, оплаченный под HiCard, но без карты у эмитента: деньги взяли,
+    // карты нет. Отличаем от прежних провайдеров по programId.
+    const issuedNoCard = activations.filter((t) => !ours(t) && t.metadata?.programId === 'LNP_HICARD')
+    const issueUsd = issued.reduce((s, t) => s + (num(t.metadata?.feeUsd) ?? 0), 0)
+
+    // ── пополнения ──
+    let gross = 0
+    let credited = 0
+    let counted = 0
+    let noCredited = 0
+    const topupsOurs = [...topups.filter(ours), ...topupsRub.filter(ours)]
+    for (const t of topupsOurs) {
+      const g = t.type === 'CARD_TOPUP_RUB' ? num(t.metadata?.gross) : num(t.amount)
+      const c = num(t.metadata?.credited)
+      if (g == null || c == null) {
+        noCredited++
+        continue
+      }
+      gross += g
+      credited += c
+      counted++
+    }
+
+    const byMethod: Record<string, number> = {}
+    for (const t of [...issued, ...topupsOurs]) {
+      const p = t.metadata?.provider ?? t.metadata?.paymentMethod ?? 'INTERNAL'
+      byMethod[p] = (byMethod[p] ?? 0) + 1
+    }
+
+    // ── по данным HiCard ──
+    // Те же границы периода, что у заказов: даты в UTC, toDate — следующий день.
+    const at = (d: unknown) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d ?? ''))
+      return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null
+    }
+    const from = at(period.fromDate)
+    const to = at(period.toDate)
+    const inPeriod = (ms: unknown) =>
+      typeof ms === 'number' && (from == null || ms >= from) && (to == null || ms < to)
+
+    const reserve = { creations: 0, creationFees: 0, deposited: 0, depositFees: 0, topUps: 0 }
+    for (const m of movements) {
+      if (!inPeriod(m.occurred_at)) continue
+      const a = Number(m.amount ?? 0)
+      if (m.type === 'CARD_CREATION_FEE') {
+        reserve.creations++
+        reserve.creationFees += a
+      } else if (m.type === 'CARD_DEPOSIT') {
+        reserve.deposited += a
+      } else if (m.type === 'CARD_DEPOSIT_FEE') {
+        reserve.depositFees += a
+      } else if (/DEPOSIT|TOPUP|FUND/.test(String(m.type)) || m.to_party?.type === 'RESERVE') {
+        reserve.topUps += a
+      }
+    }
+
+    const fee = gross - credited
+    const cost = reserve.creationFees + reserve.depositFees
+
     res.json({
       success: true,
-      issued: { count: activations.length, usd: round(issueUsd) },
+      issued: { count: issued.length, usd: round(issueUsd), withoutCard: issuedNoCard.length },
       topups: {
-        count: topups.length + topupsRub.length,
-        grossUsd: round(topupGross),
-        creditedUsd: round(topupCredited),
-        feeUsd: round(topupGross - topupCredited),
+        count: topupsOurs.length,
+        counted,
+        withoutCredited: noCredited,
+        grossUsd: round(gross),
+        creditedUsd: round(credited),
+        feeUsd: round(fee),
       },
-      revenueUsd: round(issueUsd + topupGross - topupCredited),
-      byProvider,
+      revenueUsd: round(issueUsd + fee),
+      hicard: {
+        cardsIssued: reserve.creations,
+        issueCostUsdt: round(reserve.creationFees),
+        depositedUsdt: round(reserve.deposited),
+        depositFeesUsdt: round(reserve.depositFees),
+        reserveTopUpsUsdt: round(reserve.topUps),
+      },
+      costUsd: round(cost),
+      marginUsd: round(issueUsd + fee - cost),
+      legacyExcluded: activations.length - issued.length - issuedNoCard.length
+        + (topups.length + topupsRub.length - topupsOurs.length),
+      byMethod,
     })
   } catch (e: any) {
     res.status(e.status ?? 502).json({ success: false, error: e.message })

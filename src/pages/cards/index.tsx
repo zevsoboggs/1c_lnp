@@ -103,6 +103,8 @@ function Overview() {
 
   const reserve = summary.data?.reserves?.[0]
   const r = revenue.data
+  const issueMismatch = r && r.issued.count !== r.hicard.cardsIssued
+  const depositMismatch = r && r.topups.withoutCredited === 0 && Math.abs(r.topups.creditedUsd - r.hicard.depositedUsdt) > 1
 
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
@@ -112,20 +114,20 @@ function Overview() {
         <Space wrap size={32}>
           <Statistic title="Резерв, доступно" value={reserve?.available ?? 0} formatter={statMoney} suffix={reserve?.currency ?? 'USDT'} />
           {!!reserve?.holding && <Statistic title="Заблокировано" value={reserve.holding} formatter={statMoney} suffix={reserve.currency} />}
-          <Statistic title="Карт всего" value={summary.data?.cards.total ?? 0} />
+          <Statistic title="Карт у HiCard" value={summary.data?.cards.total ?? 0} />
           <Statistic title="Активны" value={summary.data?.cards.byStatus.ACTIVE ?? 0} valueStyle={{ color: '#1a7f37' }} />
           <Statistic title="Заморожены" value={summary.data?.cards.byStatus.FROZEN ?? 0} valueStyle={{ color: '#1668dc' }} />
           <Statistic title="Выпускаются" value={summary.data?.cards.byStatus.PENDING ?? 0} />
           <Statistic title="Закрыты / не выпущены" value={(summary.data?.cards.byStatus.CANCELLED ?? 0) + (summary.data?.cards.byStatus.FAILED ?? 0)} />
         </Space>
         <Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-          Деньги на карты и выпуск списываются с резерва. Пополнение резерва — переводом USDT на
-          счета HiCard (TRC-20 и BEP-20), движения видны во вкладке «Резерв».
+          Все карты эмитента за всё время. Выпуск и деньги на карты списываются с резерва; пополнение
+          резерва — переводом USDT на счета HiCard (TRC-20 и BEP-20).
         </Paragraph>
       </Card>
 
       <Card
-        title="Выручка по картам"
+        title={range ? 'Деньги по картам за период' : 'Деньги по картам за всё время'}
         size="small"
         loading={revenue.isLoading}
         extra={
@@ -141,31 +143,97 @@ function Overview() {
         {revenue.error ? (
           <Alert type="warning" showIcon message={(revenue.error as Error).message} />
         ) : (
-          <>
-            <Space wrap size={32}>
-              <Statistic title="Выпущено карт" value={r?.issued.count ?? 0} />
-              <Statistic title="За выпуск" value={r?.issued.usd ?? 0} formatter={statMoney} suffix="USD" />
-              <Statistic title="Пополнений" value={r?.topups.count ?? 0} />
-              <Statistic title="Клиенты заплатили за пополнения" value={r?.topups.grossUsd ?? 0} formatter={statMoney} suffix="USD" />
-              <Statistic title="Ушло на карты" value={r?.topups.creditedUsd ?? 0} formatter={statMoney} suffix="USD" />
-              <Statistic title="Комиссия пополнений" value={r?.topups.feeUsd ?? 0} formatter={statMoney} suffix="USD" />
-              <Statistic title="Выручка" value={r?.revenueUsd ?? 0} formatter={statMoney} suffix="USD" valueStyle={{ color: '#1a7f37' }} />
+          r && (
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              {(issueMismatch || depositMismatch || r.issued.withoutCard > 0) && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="Заказы клиентов не сходятся с резервом HiCard"
+                  description={
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {issueMismatch && (
+                        <li>
+                          Оплаченных выпусков {r.issued.count}, а HiCard списал за выпуск {r.hicard.cardsIssued} раз.
+                        </li>
+                      )}
+                      {r.issued.withoutCard > 0 && (
+                        <li>
+                          {r.issued.withoutCard} выпуск(ов) оплачены под HiCard, но карты у эмитента нет — деньги взяли,
+                          карту не выдали.
+                        </li>
+                      )}
+                      {depositMismatch && (
+                        <li>
+                          По заказам на карты ушло {usd(r.topups.creditedUsd)}, а по резерву HiCard —{' '}
+                          {usd(r.hicard.depositedUsdt, 'USDT')}.
+                        </li>
+                      )}
+                    </ul>
+                  }
+                />
+              )}
+
+              <div>
+                <Text strong>По заказам клиентов</Text>
+                <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
+                  <Statistic title="Оплачено выпусков" value={r.issued.count} />
+                  <Statistic title="За выпуск" value={r.issued.usd} formatter={statMoney} suffix="USD" />
+                  <Statistic title="Пополнений" value={r.topups.count} />
+                  <Statistic title="Клиенты заплатили" value={r.topups.grossUsd} formatter={statMoney} suffix="USD" />
+                  <Statistic title="Ушло на карты" value={r.topups.creditedUsd} formatter={statMoney} suffix="USD" />
+                  <Statistic title="Наша комиссия 3,5%" value={r.topups.feeUsd} formatter={statMoney} suffix="USD" />
+                </Space>
+              </div>
+
+              <div>
+                <Text strong>По резерву HiCard</Text>
+                <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
+                  <Statistic title="Выпущено карт" value={r.hicard.cardsIssued} />
+                  <Statistic title="Выпуск обошёлся" value={r.hicard.issueCostUsdt} formatter={statMoney} suffix="USDT" />
+                  <Statistic title="Ушло на карты" value={r.hicard.depositedUsdt} formatter={statMoney} suffix="USDT" />
+                  <Statistic title="Комиссия эмитента" value={r.hicard.depositFeesUsdt} formatter={statMoney} suffix="USDT" />
+                  <Statistic title="Пополнили резерв" value={r.hicard.reserveTopUpsUsdt} formatter={statMoney} suffix="USDT" />
+                </Space>
+              </div>
+
+              <div>
+                <Text strong>Итог</Text>
+                <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
+                  <Statistic title="Выручка (выпуск + комиссия)" value={r.revenueUsd} formatter={statMoney} suffix="USD" />
+                  <Statistic title="Себестоимость у HiCard" value={r.costUsd} formatter={statMoney} suffix="USD" />
+                  <Statistic
+                    title="Заработали"
+                    value={r.marginUsd}
+                    formatter={statMoney}
+                    suffix="USD"
+                    valueStyle={{ color: r.marginUsd >= 0 ? '#1a7f37' : '#cf1322' }}
+                  />
+                </Space>
+              </div>
+
+              {Object.keys(r.byMethod).length > 0 && (
+                <Space wrap size={8}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Чем платили:
+                  </Text>
+                  {Object.entries(r.byMethod).map(([m, n]) => (
+                    <Tag key={m}>
+                      {PAY_PROVIDER[m] ?? m}: <b>{n}</b>
+                    </Tag>
+                  ))}
+                </Space>
+              )}
+
+              <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 0 }}>
+                Считаются только оплаченные заказы по картам, которые есть у HiCard.
+                {r.legacyExcluded > 0 &&
+                  ` Заказы прежних провайдеров карт (PaySpace, Card Program) — ${r.legacyExcluded} шт. — в расчёт не входят: их карты закрыты.`}
+                {r.topups.withoutCredited > 0 &&
+                  ` ${r.topups.withoutCredited} пополнений без данных о том, сколько ушло на карту, — в комиссию не включены.`}
+              </Paragraph>
             </Space>
-            {r && Object.keys(r.byProvider).length > 0 && (
-              <Space wrap size={8} style={{ marginTop: 12 }}>
-                {Object.entries(r.byProvider).map(([p, n]) => (
-                  <Tag key={p}>
-                    {PAY_PROVIDER[p] ?? p}: <b>{n}</b>
-                  </Tag>
-                ))}
-              </Space>
-            )}
-            <Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-              Только оплаченные заказы. Выпуск — 35 USD за карту; пополнение — клиент платит сумму
-              на карту плюс 3,5%, разница наша. Себестоимость у HiCard (~3 USD за выпуск и ~1,3% с
-              пополнения) — в движениях резерва.
-            </Paragraph>
-          </>
+          )
         )}
       </Card>
     </Space>

@@ -92,10 +92,31 @@ export type Summary = {
 }
 
 export type Revenue = {
-  issued: { count: number; usd: number }
-  topups: { count: number; grossUsd: number; creditedUsd: number; feeUsd: number }
+  /** Выпуски, чья карта есть у HiCard. withoutCard — оплачены под HiCard, а карты у эмитента нет. */
+  issued: { count: number; usd: number; withoutCard: number }
+  /** counted — вошли в расчёт; withoutCredited — нет данных, сколько ушло на карту. */
+  topups: {
+    count: number
+    counted: number
+    withoutCredited: number
+    grossUsd: number
+    creditedUsd: number
+    feeUsd: number
+  }
   revenueUsd: number
-  byProvider: Record<string, number>
+  /** То же по движениям резерва HiCard — правда эмитента. */
+  hicard: {
+    cardsIssued: number
+    issueCostUsdt: number
+    depositedUsdt: number
+    depositFeesUsdt: number
+    reserveTopUpsUsdt: number
+  }
+  costUsd: number
+  marginUsd: number
+  /** Заказы прежних провайдеров карт — в расчёт не входят. */
+  legacyExcluded: number
+  byMethod: Record<string, number>
 }
 
 const qs = (o: Record<string, unknown>) => {
