@@ -105,7 +105,6 @@ function Overview() {
 
   const reserve = summary.data?.reserves?.[0]
   const r = revenue.data
-  const issueMismatch = r && r.issued.count !== r.hicard.cardsIssued
   const problems = r ? r.unmatched.length + r.orphanDeposits.length : 0
 
   return (
@@ -147,30 +146,6 @@ function Overview() {
         ) : (
           r && (
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              {r && (issueMismatch || problems > 0) && (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message="Заказы клиентов сходятся с HiCard не полностью — ниже списки, что именно"
-                  description={
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {issueMismatch && (
-                        <li>
-                          Заказов на выпуск с картой HiCard — {r.issued.count}, выпусков у HiCard — {r.hicard.cardsIssued}.
-                        </li>
-                      )}
-                      {r.unmatched.length > 0 && <li>Заказов, которые не удалось посчитать уверенно: {r.unmatched.length}.</li>}
-                      {r.orphanDeposits.length > 0 && (
-                        <li>
-                          Пополнений карт у HiCard без заказа: {r.orphanDeposits.length} на{' '}
-                          {usd(r.orphanDeposits.reduce((s, x) => s + x.amount, 0), 'USDT')}.
-                        </li>
-                      )}
-                    </ul>
-                  }
-                />
-              )}
-
               <div>
                 <Text strong>По заказам клиентов</Text>
                 <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
