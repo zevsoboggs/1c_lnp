@@ -41,6 +41,7 @@ import {
   BookOutlined,
   MoneyCollectOutlined,
   UserSwitchOutlined,
+  QrcodeOutlined,
 } from '@ant-design/icons'
 import '@refinedev/antd/dist/reset.css'
 import './styles/onec.css'
@@ -91,6 +92,8 @@ import { MiniappMaintenance } from './pages/miniapp-maintenance'
 import { MiniappBalances } from './pages/miniapp-balances'
 import { EsimPage } from './pages/esim'
 import { Reports } from './pages/reports'
+import { CardsPage } from './pages/cards'
+import { SberPayPage } from './pages/sberpay'
 
 export default function App() {
   return (
@@ -149,6 +152,16 @@ export default function App() {
                 name: 'refund-requests',
                 list: '/refund-requests',
                 meta: { label: 'Возвраты', icon: <RollbackOutlined /> },
+              },
+              {
+                name: 'sberpay',
+                list: '/sberpay',
+                meta: { label: 'SberPay', icon: <QrcodeOutlined /> },
+              },
+              {
+                name: 'cards',
+                list: '/cards',
+                meta: { label: 'Карты', icon: <CreditCardOutlined /> },
               },
 
               // ── Финансы ──────────────────────────────────────────────
@@ -356,6 +369,8 @@ export default function App() {
                 <Route path="/partner-moderation" element={<PartnerModerationPage />} />
                 <Route path="/hierarchy" element={<HierarchyPage />} />
                 <Route path="/vcc" element={<VccPage />} />
+                <Route path="/cards" element={<CardsPage />} />
+                <Route path="/sberpay" element={<SberPayPage />} />
                 <Route path="/energy" element={<EnergyPage />} />
                 <Route path="/crypto" element={<CryptoPage />} />
                 <Route path="/api-logs" element={<ApiLogList />} />

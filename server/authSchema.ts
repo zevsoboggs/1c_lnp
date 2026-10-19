@@ -87,6 +87,8 @@ export const SECTIONS: Array<{ key: string; label: string; group: string }> = [
   { key: 'pos-markups', label: 'POS-наценки', group: 'Финансы' },
   { key: 'referral-overrides', label: 'Реф. наценки', group: 'Финансы' },
   { key: 'vcc', label: 'Виртуальные карты', group: 'Финансы' },
+  { key: 'cards', label: 'Карты HiCard', group: 'Финансы' },
+  { key: 'sberpay', label: 'SberPay', group: 'Финансы' },
   { key: 'crypto', label: 'Криптоплатежи', group: 'Финансы' },
   { key: 'energy', label: 'Аренда энергии', group: 'Финансы' },
   { key: 'reports', label: 'Отчёты по партнёрам', group: 'Финансы' },
@@ -141,6 +143,8 @@ const SEED_ROLES: Array<{ name: string; description: string; is_system: boolean;
       markups: 'read',
       'pos-markups': 'read',
       vcc: 'read',
+      cards: 'read',
+      sberpay: 'read',
       partners: 'read',
     },
   },
@@ -157,6 +161,10 @@ const SEED_ROLES: Array<{ name: string; description: string; is_system: boolean;
       'api-logs',
       'miniapp-orders',
       'miniapp-users',
+      // Поддержке видно карты клиентов и их операции — чтобы отвечать на
+      // «почему не прошла покупка»; заморозка требует записи и ей закрыта.
+      'cards',
+      'sberpay',
     ]),
   },
   {

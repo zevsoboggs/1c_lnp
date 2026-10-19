@@ -57,6 +57,20 @@ services:
         sync: false
       - key: YESIM_CORE_URL
         value: https://core.yesim.biz
+      # Карты HiCard (раздел «Карты»): обзор, картотека, заморозка.
+      - key: HICARD_BASE_URL
+        value: https://api.hicard.tech
+      - key: HICARD_ACCESS_KEY
+        sync: false
+      - key: HICARD_ACCESS_SECRET
+        sync: false
+      # SberPay через NPay (раздел «SberPay»): остаток мерчанта и сверка ссылок.
+      - key: NPAY_BASE_URL
+        sync: false
+      - key: NPAY_MERCHANT_GUID
+        sync: false
+      - key: NPAY_API_KEY
+        sync: false
       # Первый пароль администратора при первом старте (иначе печатается в лог).
       - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false

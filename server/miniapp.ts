@@ -37,6 +37,9 @@ async function call<T = any>(path: string, query: Record<string, unknown> = {}):
   return body as T
 }
 
+/** Тот же запрос для соседних разделов (карты, SberPay): ключ живёт только здесь. */
+export const miniappCall = call
+
 /** Номер карты приходит целиком — наружу отдаём только хвост. */
 function maskOrder(o: any) {
   const pan: string | undefined = o?.card?.cardNumber ?? o?.cards?.cardNumber

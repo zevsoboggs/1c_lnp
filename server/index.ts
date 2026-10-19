@@ -6,6 +6,8 @@ import { renderDocument } from './documentTemplate.js'
 import { getRate } from './rapira.js'
 import { vcc } from './vcc.js'
 import { miniapp } from './miniapp.js'
+import { cards } from './hicard.js'
+import { sberpay } from './npay.js'
 import { auth, requireAuth, requireSection, writeAudit } from './auth.js'
 import { adminUsers } from './adminUsers.js'
 import { employees, migrateEmployees } from './employees.js'
@@ -57,6 +59,11 @@ app.use('/api/vcc', requireAuth, vccGate, vcc)
 // иначе оператор без права miniapp-broadcast мог бы разослать сообщение всем.
 app.use('/api/miniapp', requireAuth, miniappGate, miniapp)
 
+// Карты HiCard и SberPay (NPay): у каждого раздела своё право. GET — чтение,
+// остальное — запись (у карт это заморозка; SberPay только читает).
+app.use('/api/cards', requireAuth, sectionGate('cards'), cards)
+app.use('/api/sberpay', requireAuth, sectionGate('sberpay'), sberpay)
+
 const LP_API = (process.env.ADMIN_API_URL || 'https://api.prod.loveandpay.io').replace(/\/$/, '')
 const LP_KEY = (process.env.ADMIN_API_KEY || '').split(',')[0].trim()
 const PORT = Number(process.env.PORT || 5274)
@@ -85,6 +92,14 @@ import type { Request, Response, NextFunction } from 'express'
 function vccGate(req: Request, res: Response, next: NextFunction) {
   const need = req.method === 'GET' || req.method === 'HEAD' ? 'read' : 'write'
   return requireSection('vcc', need)(req, res, next)
+}
+
+/** То же для любого раздела: GET — чтение, остальное — запись. */
+function sectionGate(section: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const need = req.method === 'GET' || req.method === 'HEAD' ? 'read' : 'write'
+    return requireSection(section, need)(req, res, next)
+  }
 }
 
 /**
