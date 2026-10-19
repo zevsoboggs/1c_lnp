@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
   Button,
+  Collapse,
   Card,
   Descriptions,
   Drawer,
@@ -42,6 +43,7 @@ import {
   type CardTx,
   type Movement,
   type AppOperation,
+  type Unmatched,
 } from '../../api/cards'
 
 const { Text, Paragraph } = Typography
@@ -104,7 +106,7 @@ function Overview() {
   const reserve = summary.data?.reserves?.[0]
   const r = revenue.data
   const issueMismatch = r && r.issued.count !== r.hicard.cardsIssued
-  const depositMismatch = r && r.topups.withoutCredited === 0 && Math.abs(r.topups.creditedUsd - r.hicard.depositedUsdt) > 1
+  const problems = r ? r.unmatched.length + r.orphanDeposits.length : 0
 
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
@@ -145,28 +147,23 @@ function Overview() {
         ) : (
           r && (
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              {(issueMismatch || depositMismatch || r.issued.withoutCard > 0) && (
+              {r && (issueMismatch || problems > 0) && (
                 <Alert
                   type="warning"
                   showIcon
-                  message="Заказы клиентов не сходятся с резервом HiCard"
+                  message="Заказы клиентов сходятся с HiCard не полностью — ниже списки, что именно"
                   description={
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {issueMismatch && (
                         <li>
-                          Оплаченных выпусков {r.issued.count}, а HiCard списал за выпуск {r.hicard.cardsIssued} раз.
+                          Заказов на выпуск с картой HiCard — {r.issued.count}, выпусков у HiCard — {r.hicard.cardsIssued}.
                         </li>
                       )}
-                      {r.issued.withoutCard > 0 && (
+                      {r.unmatched.length > 0 && <li>Заказов, которые не удалось посчитать уверенно: {r.unmatched.length}.</li>}
+                      {r.orphanDeposits.length > 0 && (
                         <li>
-                          {r.issued.withoutCard} выпуск(ов) оплачены под HiCard, но карты у эмитента нет — деньги взяли,
-                          карту не выдали.
-                        </li>
-                      )}
-                      {depositMismatch && (
-                        <li>
-                          По заказам на карты ушло {usd(r.topups.creditedUsd)}, а по резерву HiCard —{' '}
-                          {usd(r.hicard.depositedUsdt, 'USDT')}.
+                          Пополнений карт у HiCard без заказа: {r.orphanDeposits.length} на{' '}
+                          {usd(r.orphanDeposits.reduce((s, x) => s + x.amount, 0), 'USDT')}.
                         </li>
                       )}
                     </ul>
@@ -177,7 +174,8 @@ function Overview() {
               <div>
                 <Text strong>По заказам клиентов</Text>
                 <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
-                  <Statistic title="Оплачено выпусков" value={r.issued.count} />
+                  <Statistic title="Заказов на выпуск" value={r.issued.count} />
+                  {r.issued.noFee > 0 && <Statistic title="Из них без суммы" value={r.issued.noFee} valueStyle={{ color: '#d46b08' }} />}
                   <Statistic title="За выпуск" value={r.issued.usd} formatter={statMoney} suffix="USD" />
                   <Statistic title="Пополнений" value={r.topups.count} />
                   <Statistic title="Клиенты заплатили" value={r.topups.grossUsd} formatter={statMoney} suffix="USD" />
@@ -190,6 +188,7 @@ function Overview() {
                 <Text strong>По резерву HiCard</Text>
                 <Space wrap size={32} style={{ marginTop: 8, display: 'flex' }}>
                   <Statistic title="Выпущено карт" value={r.hicard.cardsIssued} />
+                  <Statistic title="Пополнений карт" value={r.hicard.deposits} />
                   <Statistic title="Выпуск обошёлся" value={r.hicard.issueCostUsdt} formatter={statMoney} suffix="USDT" />
                   <Statistic title="Ушло на карты" value={r.hicard.depositedUsdt} formatter={statMoney} suffix="USDT" />
                   <Statistic title="Комиссия эмитента" value={r.hicard.depositFeesUsdt} formatter={statMoney} suffix="USDT" />
@@ -203,7 +202,7 @@ function Overview() {
                   <Statistic title="Выручка (выпуск + комиссия)" value={r.revenueUsd} formatter={statMoney} suffix="USD" />
                   <Statistic title="Себестоимость у HiCard" value={r.costUsd} formatter={statMoney} suffix="USD" />
                   <Statistic
-                    title="Заработали"
+                    title={problems > 0 ? "Заработали (без несопоставленного)" : "Заработали"}
                     value={r.marginUsd}
                     formatter={statMoney}
                     suffix="USD"
@@ -211,6 +210,61 @@ function Overview() {
                   />
                 </Space>
               </div>
+
+              {r.unmatched.length > 0 && (
+                <Collapse
+                  size="small"
+                  items={[
+                    {
+                      key: 'u',
+                      label: `Не сопоставлено заказов: ${r.unmatched.length}`,
+                      children: (
+                        <Table
+                          size="small"
+                          rowKey={(x) => x.id + x.why}
+                          pagination={r.unmatched.length > 20 ? { pageSize: 20 } : false}
+                          dataSource={r.unmatched}
+                          scroll={{ x: 900 }}
+                          columns={[
+                            { dataIndex: 'createdAt', title: 'Когда', width: 130, render: (v: string) => dt(v) },
+                            { dataIndex: 'type', title: 'Вид', width: 150, render: (v: string) => APP_TYPES.find((t) => t.value === v)?.label ?? v },
+                            { title: 'Сумма', width: 120, align: 'right', render: (_: unknown, x: Unmatched) => amount(x.amount, x.currency) },
+                            { dataIndex: 'user', title: 'Клиент', width: 140, render: (v: string | null, x: Unmatched) => v ?? x.telegramUserId ?? '—' },
+                            { dataIndex: 'why', title: 'Почему не посчитан', render: (v: string) => <Text type="warning">{v}</Text> },
+                            { dataIndex: 'id', title: 'ID заказа', width: 120, render: (v: string) => <Text copyable={{ text: v }} style={{ fontSize: 11 }}>{v.slice(0, 8)}…</Text> },
+                          ]}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              )}
+
+              {r.orphanDeposits.length > 0 && (
+                <Collapse
+                  size="small"
+                  items={[
+                    {
+                      key: 'o',
+                      label: `Пополнения у HiCard без заказа: ${r.orphanDeposits.length}`,
+                      children: (
+                        <Table
+                          size="small"
+                          rowKey={(x) => `${x.cardId}-${x.occurredAt}`}
+                          pagination={false}
+                          dataSource={r.orphanDeposits}
+                          columns={[
+                            { dataIndex: 'occurredAt', title: 'Когда', width: 140, render: (v: string) => dt(v) },
+                            { dataIndex: 'amount', title: 'На карту', width: 120, align: 'right', render: (v: number) => amount(v, 'USDT') },
+                            { dataIndex: 'owner', title: 'Клиент', width: 150, render: (v: string | null) => v ?? '—' },
+                            { dataIndex: 'cardId', title: 'Карта в HiCard', render: (v: string | null) => (v ? <Text copyable style={{ fontSize: 11 }}>{v}</Text> : '—') },
+                          ]}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              )}
 
               {Object.keys(r.byMethod).length > 0 && (
                 <Space wrap size={8}>
@@ -228,9 +282,8 @@ function Overview() {
               <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 0 }}>
                 Считаются только оплаченные заказы по картам, которые есть у HiCard.
                 {r.legacyExcluded > 0 &&
-                  ` Заказы прежних провайдеров карт (PaySpace, Card Program) — ${r.legacyExcluded} шт. — в расчёт не входят: их карты закрыты.`}
-                {r.topups.withoutCredited > 0 &&
-                  ` ${r.topups.withoutCredited} пополнений без данных о том, сколько ушло на карту, — в комиссию не включены.`}
+                  ` Заказы прежних провайдеров карт до 15.10.2026 (PaySpace, Card Program) — ${r.legacyExcluded} шт. — в расчёт не входят.`}
+                {' '}Заказы без суммы выпуска или без данных о зачислении на карту в деньги не включены — они в списке «Не сопоставлено».
               </Paragraph>
             </Space>
           )

@@ -91,9 +91,24 @@ export type Summary = {
   cards: { total: number; byStatus: Record<string, number> }
 }
 
+export type Unmatched = {
+  id: string
+  type: string
+  createdAt: string
+  amount: number | null
+  currency: string | null
+  user: string | null
+  telegramUserId: number | null
+  cardId: string | null
+  feeUsd: number | null
+  credited: number | null
+  method: string | null
+  why: string
+}
+
 export type Revenue = {
-  /** Выпуски, чья карта есть у HiCard. withoutCard — оплачены под HiCard, а карты у эмитента нет. */
-  issued: { count: number; usd: number; withoutCard: number }
+  /** Выпуски, чья карта есть у HiCard. noFee — без суммы выпуска в заказе (промокод или пустое поле). */
+  issued: { count: number; paidCount: number; usd: number; noFee: number }
   /** counted — вошли в расчёт; withoutCredited — нет данных, сколько ушло на карту. */
   topups: {
     count: number
@@ -108,13 +123,18 @@ export type Revenue = {
   hicard: {
     cardsIssued: number
     issueCostUsdt: number
+    deposits: number
     depositedUsdt: number
     depositFeesUsdt: number
     reserveTopUpsUsdt: number
   }
   costUsd: number
   marginUsd: number
-  /** Заказы прежних провайдеров карт — в расчёт не входят. */
+  /** Заказы эпохи HiCard, которые не удалось уверенно посчитать, — с причиной. */
+  unmatched: Unmatched[]
+  /** Пополнения карт у HiCard, под которые не нашёлся заказ с той же картой и суммой. */
+  orphanDeposits: Array<{ cardId: string | null; amount: number; occurredAt: string | null; owner: string | null }>
+  /** Заказы прежних провайдеров карт (до 15.10.2026) — в расчёт не входят. */
   legacyExcluded: number
   byMethod: Record<string, number>
 }

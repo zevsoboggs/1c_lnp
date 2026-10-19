@@ -396,24 +396,73 @@ cards.get('/revenue', async (req, res) => {
       v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v)
     const round = (v: number) => Math.round(v * 100) / 100
 
+    // Прежние провайдеры карт отключены 15.10.2026 (документация по картам,
+    // п. 1). Заказ после этой даты — эпоха HiCard, даже если связать его с
+    // картой не удалось: прятать такой в «старые» нельзя, его надо показать.
+    const HICARD_FROM = Date.UTC(2026, 9, 15)
+    const hicardEra = (t: any) =>
+      Date.parse(t.createdAt) >= HICARD_FROM || t.metadata?.programId === 'LNP_HICARD'
+
+    /** Короткая строка заказа для списка «не сопоставлено» — человеку разбирать руками. */
+    const brief = (t: any, why: string) => {
+      const u = t.user ?? t.users
+      return {
+        id: t.id,
+        type: t.type,
+        createdAt: t.createdAt,
+        amount: num(t.amount),
+        currency: t.currency ?? null,
+        user: u ? (u.username ? `@${u.username}` : u.firstName ?? String(u.telegramUserId ?? '')) : null,
+        telegramUserId: u?.telegramUserId ?? null,
+        cardId: cardOf(t),
+        feeUsd: num(t.metadata?.feeUsd),
+        credited: num(t.metadata?.credited),
+        method: t.metadata?.provider ?? t.metadata?.paymentMethod ?? null,
+        why,
+      }
+    }
+
+    const unmatched: ReturnType<typeof brief>[] = []
+    let legacy = 0
+
     // ── выпуск ──
-    const issued = activations.filter(ours)
-    // Выпуск, оплаченный под HiCard, но без карты у эмитента: деньги взяли,
-    // карты нет. Отличаем от прежних провайдеров по programId.
-    const issuedNoCard = activations.filter((t) => !ours(t) && t.metadata?.programId === 'LNP_HICARD')
-    const issueUsd = issued.reduce((s, t) => s + (num(t.metadata?.feeUsd) ?? 0), 0)
+    const issued: any[] = []
+    for (const t of activations) {
+      if (ours(t)) issued.push(t)
+      else if (hicardEra(t)) {
+        unmatched.push(brief(t, cardOf(t) ? 'карты с таким id у HiCard нет' : 'в заказе не указана карта'))
+      } else legacy++
+    }
+    let issueUsd = 0
+    let issueNoFee = 0
+    for (const t of issued) {
+      const fee = num(t.metadata?.feeUsd)
+      // Без суммы выпуска не подставляем 35: это может быть промокод,
+      // а может быть незаполненное поле. Считаем отдельно.
+      if (fee == null || fee === 0) {
+        issueNoFee++
+        unmatched.push(brief(t, fee === 0 ? 'выпуск за 0 USD (промокод?)' : 'в заказе нет суммы выпуска (feeUsd)'))
+      } else issueUsd += fee
+    }
 
     // ── пополнения ──
     let gross = 0
     let credited = 0
     let counted = 0
+    const topupsOurs: any[] = []
+    for (const t of [...topups, ...topupsRub]) {
+      if (ours(t)) topupsOurs.push(t)
+      else if (hicardEra(t)) {
+        unmatched.push(brief(t, cardOf(t) ? 'карты с таким id у HiCard нет' : 'в заказе не указана карта'))
+      } else legacy++
+    }
     let noCredited = 0
-    const topupsOurs = [...topups.filter(ours), ...topupsRub.filter(ours)]
     for (const t of topupsOurs) {
       const g = t.type === 'CARD_TOPUP_RUB' ? num(t.metadata?.gross) : num(t.amount)
       const c = num(t.metadata?.credited)
       if (g == null || c == null) {
         noCredited++
+        unmatched.push(brief(t, 'нет данных, сколько ушло на карту (credited)'))
         continue
       }
       gross += g
@@ -438,19 +487,45 @@ cards.get('/revenue', async (req, res) => {
     const inPeriod = (ms: unknown) =>
       typeof ms === 'number' && (from == null || ms >= from) && (to == null || ms < to)
 
-    const reserve = { creations: 0, creationFees: 0, deposited: 0, depositFees: 0, topUps: 0 }
+    const reserve = { creations: 0, creationFees: 0, deposits: 0, deposited: 0, depositFees: 0, topUps: 0 }
+    const depositRows: any[] = []
     for (const m of movements) {
       if (!inPeriod(m.occurred_at)) continue
-      const a = Number(m.amount ?? 0)
+      const amt = Number(m.amount ?? 0)
       if (m.type === 'CARD_CREATION_FEE') {
         reserve.creations++
-        reserve.creationFees += a
+        reserve.creationFees += amt
       } else if (m.type === 'CARD_DEPOSIT') {
-        reserve.deposited += a
+        reserve.deposits++
+        reserve.deposited += amt
+        depositRows.push(m)
       } else if (m.type === 'CARD_DEPOSIT_FEE') {
-        reserve.depositFees += a
-      } else if (/DEPOSIT|TOPUP|FUND/.test(String(m.type)) || m.to_party?.type === 'RESERVE') {
-        reserve.topUps += a
+        reserve.depositFees += amt
+      } else if (m.to_party?.type === 'RESERVE') {
+        reserve.topUps += amt
+      }
+    }
+
+    // Пополнения у HiCard без заказа: на ту же карту и на ту же сумму
+    // (credited ≈ сумма депозита) заказа не нашлось. Это деньги, которые
+    // ушли с резерва на карту, а оплата за них в заказах не видна.
+    const pool = topupsOurs
+      .map((t) => ({ card: cardOf(t), credited: num(t.metadata?.credited) }))
+      .filter((x) => x.credited != null)
+    const orphanDeposits: Array<{ cardId: string | null; amount: number; occurredAt: string | null; owner: string | null }> = []
+    const map = await ownersSafe()
+    for (const m of depositRows) {
+      const card = m.to_party?.card_id != null ? String(m.to_party.card_id) : null
+      const i = pool.findIndex((x) => x.card === card && Math.abs((x.credited ?? 0) - Number(m.amount)) < 0.06)
+      if (i >= 0) pool.splice(i, 1)
+      else {
+        const o = card ? map.get(card) : undefined
+        orphanDeposits.push({
+          cardId: card,
+          amount: Number(m.amount),
+          occurredAt: iso(m.occurred_at),
+          owner: o ? (o.username ? `@${o.username}` : o.firstName ?? null) : null,
+        })
       }
     }
 
@@ -459,7 +534,7 @@ cards.get('/revenue', async (req, res) => {
 
     res.json({
       success: true,
-      issued: { count: issued.length, usd: round(issueUsd), withoutCard: issuedNoCard.length },
+      issued: { count: issued.length, paidCount: issued.length - issueNoFee, usd: round(issueUsd), noFee: issueNoFee },
       topups: {
         count: topupsOurs.length,
         counted,
@@ -472,14 +547,16 @@ cards.get('/revenue', async (req, res) => {
       hicard: {
         cardsIssued: reserve.creations,
         issueCostUsdt: round(reserve.creationFees),
+        deposits: reserve.deposits,
         depositedUsdt: round(reserve.deposited),
         depositFeesUsdt: round(reserve.depositFees),
         reserveTopUpsUsdt: round(reserve.topUps),
       },
       costUsd: round(cost),
       marginUsd: round(issueUsd + fee - cost),
-      legacyExcluded: activations.length - issued.length - issuedNoCard.length
-        + (topups.length + topupsRub.length - topupsOurs.length),
+      unmatched,
+      orphanDeposits,
+      legacyExcluded: legacy,
       byMethod,
     })
   } catch (e: any) {
